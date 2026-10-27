@@ -991,9 +991,20 @@
                 }
             }
 
-            // FUNGSI HELPER GENERIK: Ambil SEMUA baris dari tabel manapun di Supabase,
-            // menembus limit default 1000 baris per query, memakai pagination .range().
-            // queryModifier (opsional): fungsi untuk menambahkan filter seperti .eq() sebelum di-paginate.
+            // Daftar pengguna untuk panel admin. Kolom is_active (aktivasi akun) dipakai jika sudah ada di database.
+            async function fetchUsersList() {
+                const cols = 'id, username, name, role, class, subject, is_login';
+                try {
+                    const rows = await fetchAllRows('users', cols + ', is_active');
+                    window.usersActiveColumnMissing = false;
+                    return rows;
+                } catch (err) {
+                    console.warn('Kolom is_active belum ada di tabel users, memuat tanpa kolom itu:', err);
+                    window.usersActiveColumnMissing = true;
+                    return await fetchAllRows('users', cols);
+                }
+            }
+
             async function fetchAllRows(tableName, selectColumns = '*', orderColumn = 'id', queryModifier = null) {
                 const FETCH_SIZE = 1000;
                 let from = 0;
@@ -1117,10 +1128,6 @@
             async function laporKeAdmin() {
                 // Cek koneksi & user login
                 if (!dbClient || !currentUser) return;
-
-                if (currentUser.class === 'admin' || currentUser.class === 'guru') {
-                    return; // Fungsi langsung dihentikan di sini
-                }
 
                 // Ambil Nama Mapel
                 let namaMapel = "Ujian"; 
@@ -1692,7 +1699,6 @@
                     const savedAnswers = localStorage.getItem('studentAnswers');
                     const savedDoubt = localStorage.getItem('doubtQuestions') || sessionStorage.getItem('doubtQuestions');
                     const savedIndex = localStorage.getItem('currentQuestionIndex') || sessionStorage.getItem('currentQuestionIndex');
-                    const savedTime = localStorage.getItem('remainingTime') || sessionStorage.getItem('remainingTime');
                     const savedViolations = localStorage.getItem('violationCount') || sessionStorage.getItem('violationCount');
                     // 2. VALIDASI KRUSIAL: Cek apakah mata pelajaran ini benar-benar punya soal
                     const subjectQuestions = allQuestions.filter(q => q.subject === currentExam.subject);
@@ -1700,7 +1706,6 @@
                     if (savedAnswers) studentAnswers = JSON.parse(savedAnswers);
                     if (savedDoubt) doubtQuestions = new Set(JSON.parse(savedDoubt));
                     if (savedIndex) currentQuestionIndex = parseInt(savedIndex);
-                    if (savedTime) remainingTime = parseInt(savedTime);
                     if (savedViolations) violationCount = parseInt(savedViolations);
                     if (subjectQuestions.length === 0) {
                         // Jika setelah refresh ternyata soal tidak ada/belum tersedia
@@ -1909,6 +1914,20 @@
                         showError('Username atau password salah!');
                         return;
                     }
+
+                    // Akun yang dinonaktifkan admin tidak boleh login (admin tidak terpengaruh)
+                    if (userData.role !== 'admin' && userData.is_active === false) {
+                        if (typeof Swal !== 'undefined') Swal.close();
+                        
+                        // Tentukan pesan berdasarkan role
+                        let errorMessage = 'Akun Anda dinonaktifkan. Silakan hubungi admin.'; // Default/Guru
+                        if (userData.role === 'siswa') {
+                            errorMessage = 'Ujian belum dimulai, silahkan tunggu.';
+                        }
+                        showError(errorMessage);
+                        return;
+                    }
+
                     // --- LOGIKA TAMBAHAN: FITUR SINGLE LOGIN (KHUSUS SISWA) ---
                     if (userData.role === 'siswa' && userData.is_login === true) {
                         if (typeof Swal !== 'undefined') {
@@ -1990,7 +2009,7 @@
                     try {
                         // Tarik SEMUA DATA secara Paralel (bersamaan) agar jauh lebih cepat
                         const [usersData, resultsData, questionsData] = await Promise.all([
-                            fetchAllRows('users', 'id, username, name, role, class, subject, is_login'),
+                            fetchUsersList(),
                             fetchAllRows('examresult', '*', 'timestamp'),
                             fetchAllQuestions()
                         ]);
@@ -3372,8 +3391,8 @@
                 let finalAnswer;
 
                 // 1. Logika Penentuan Jawaban
-                if (currentQuestion.question_type === 'isian_singkat' || currentQuestion.question_type === 'benar_salah') {
-                    // Ambil nilai teks langsung (Benar/Salah atau hasil ketikan)
+                if (currentQuestion.question_type === 'isian_singkat') {
+                    // Ambil nilai teks langsung (hasil ketikan)
                     finalAnswer = indexOrText;
                 } else {
                     // Ambil dari array options berdasarkan index (Pilihan Ganda)
@@ -3392,7 +3411,7 @@
                 renderQuestionNav();
 
                 // 5. UPDATE TAMPILAN PILIHAN (ringan, tanpa render ulang gambar & rumus)
-                if (currentQuestion.question_type === 'pilihan_ganda' || currentQuestion.question_type === 'benar_salah') {
+                if (currentQuestion.question_type === 'pilihan_ganda') {
                     updateOptionHighlight();
                 } else if (currentQuestion.question_type !== 'isian_singkat') {
                     renderQuestion();
@@ -3818,7 +3837,6 @@
                 localStorage.removeItem('studentAnswers');
                 localStorage.removeItem('currentExam');
                 localStorage.removeItem('currentQuestionIndex');
-                localStorage.removeItem('remainingTime');
                 localStorage.removeItem('violationCount');
                 localStorage.removeItem('doubtQuestions');
                 localStorage.removeItem('currentUser');
@@ -3828,7 +3846,6 @@
                 sessionStorage.removeItem('studentAnswers');
                 sessionStorage.removeItem('doubtQuestions');
                 sessionStorage.removeItem('currentQuestionIndex');
-                sessionStorage.removeItem('remainingTime');
                 sessionStorage.removeItem('violationCount');
 
                 if (typeof renderResultPage === 'function') renderResultPage(score);
@@ -4134,6 +4151,8 @@
                 filterState = { class: "", subject: "", type: "", sortBy: "time_desc" };
                 window.currentUserFilter = 'all';
                 window.currentUserSearch = '';
+                window.currentAccountFilter = 'all';
+                window.selectedUserIds = new Set();
                 window.selectedBankSoalClass = '';
                 window.selectedBankSoalSubject = '';
                 window.selectedBankSoalType = '';
@@ -4882,7 +4901,7 @@
                         <div data-name="${escHtml(u.name)}" onclick="selectUserSuggestion(this.dataset.name)" 
                             class="px-3 py-2 text-xs md:text-sm cursor-pointer hover:bg-[#e8f3e8] flex items-center gap-2 border-b border-gray-100 last:border-b-0">
                             <span>${u.role === 'admin' ? '👨‍💼' : u.role === 'guru' ? '👨‍🏫' : '👨‍🎓'}</span>
-                            <b class="text-[#006400]">${escHtml(match)}</b>${escHtml(after)}</span>
+                            <span>${escHtml(before)}<b class="text-[#006400]">${escHtml(match)}</b>${escHtml(after)}</span>
                             <span class="ml-auto text-[10px] text-gray-400">${escHtml(u.role === 'siswa' ? (u.class || '') : u.role)}</span>
                         </div>
                     `;
@@ -5073,6 +5092,7 @@
             function setUserTab(tab) {
                 window.currentUserTab = tab === 'staff' ? 'staff' : 'siswa';
                 window.currentUserSearch = '';
+                window.selectedUserIds = new Set();
                 pageState.users = 1;
                 const input = document.getElementById('userSearchInput');
                 if (input) input.value = '';
@@ -5092,6 +5112,575 @@
 
             function setUserStatusFilter(v) { window.currentUserFilter = v; pageState.users = 1; renderUsersSection(); }
             function setUserClassFilter(v) { window.currentUserClass = v; pageState.users = 1; renderUsersSection(); }
+
+            // ================= Fitur lanjutan menu Pengguna =================
+            function setUserAccountFilter(v) { window.currentAccountFilter = v; pageState.users = 1; renderUsersSection(); }
+            function isUserActive(u) { return u.is_active !== false; }
+            function userSel() {
+                if (!(window.selectedUserIds instanceof Set)) window.selectedUserIds = new Set();
+                return window.selectedUserIds;
+            }
+            function isSelfUser(u) {
+                return !!currentUser && (String(currentUser.id) === String(u.id) || currentUser.username === u.username);
+            }
+            function userTabNow() { return window.currentUserTab === 'staff' ? 'staff' : 'siswa'; }
+
+            // Daftar pengguna pada tab + semua filter yang sedang aktif (dipakai tabel, ekspor, dan aksi massal)
+            function getFilteredUsers(tab) {
+                let list = usersOfTab(tab);
+                if (tab === 'siswa') {
+                    if (window.currentUserFilter === 'online') list = list.filter(u => u.is_login);
+                    else if (window.currentUserFilter === 'offline') list = list.filter(u => !u.is_login);
+                    if (window.currentUserClass) list = list.filter(u => String(u.class || '').trim() === window.currentUserClass);
+                }
+                if (window.currentAccountFilter === 'active') list = list.filter(isUserActive);
+                else if (window.currentAccountFilter === 'inactive') list = list.filter(u => !isUserActive(u));
+                const kw = (window.currentUserSearch || '').trim().toLowerCase();
+                if (kw) {
+                    list = list.filter(u =>
+                        (u.name && u.name.toLowerCase().includes(kw)) ||
+                        (u.username && String(u.username).toLowerCase().includes(kw))
+                    );
+                }
+                const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'id');
+                if (tab === 'siswa') {
+                    return [...list].sort((a, b) => String(a.class || '').localeCompare(String(b.class || ''), undefined, { numeric: true }) || byName(a, b));
+                }
+                const rank = r => (r === 'admin' ? 0 : 1);
+                return [...list].sort((a, b) => rank(a.role) - rank(b.role) || byName(a, b));
+            }
+
+            // ---------- Pilih (centang) ----------
+            function toggleUserSelect(id, checked) {
+                if (checked) userSel().add(String(id)); else userSel().delete(String(id));
+                updateUsersBulkBar();
+            }
+            function toggleSelectAllUsersPage(checked) {
+                (window._userPageIds || []).forEach(id => { if (checked) userSel().add(id); else userSel().delete(id); });
+                renderUsersSection();
+            }
+            function clearUserSelection() { userSel().clear(); renderUsersSection(); }
+            function updateUsersBulkBar() {
+                const n = userSel().size;
+                const el = document.getElementById('usersSelectedInfo');
+                if (el) {
+                    el.innerHTML = n
+                        ? `<b class="text-emerald-700">${n}</b> dipilih · <button type="button" onclick="clearUserSelection()" class="underline">Batal pilih</button>`
+                        : 'Centang pengguna untuk aksi terpilih, atau pakai tombol aksi untuk semua hasil filter.';
+                }
+                const all = document.getElementById('usersSelectAll');
+                if (all) {
+                    const ids = window._userPageIds || [];
+                    all.checked = ids.length > 0 && ids.every(id => userSel().has(id));
+                }
+            }
+
+            // Tanya: proses yang terpilih atau semua hasil filter?
+            async function chooseUserScope(title) {
+                const filtered = getFilteredUsers(userTabNow());
+                const selected = allUsers.filter(u => userSel().has(String(u.id)));
+                if (selected.length === 0 && filtered.length === 0) {
+                    showToast('Tidak ada pengguna yang sesuai', 'error');
+                    return null;
+                }
+                const res = await Swal.fire({
+                    title,
+                    icon: 'question',
+                    text: 'Data mana yang diproses?',
+                    confirmButtonText: selected.length ? `Terpilih (${selected.length})` : `Semua hasil filter (${filtered.length})`,
+                    showDenyButton: selected.length > 0 && filtered.length > 0,
+                    denyButtonText: `Semua hasil filter (${filtered.length})`,
+                    showCancelButton: true,
+                    cancelButtonText: 'Batal'
+                });
+                if (res.isConfirmed) return selected.length ? { users: selected, scope: 'selected' } : { users: filtered, scope: 'filter' };
+                if (res.isDenied) return { users: filtered, scope: 'filter' };
+                return null;
+            }
+
+            // ---------- Aktivasi akun ----------
+            function showActiveColumnHelp() {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Aktifkan fitur aktivasi akun',
+                    html: `<div style="text-align:left;font-size:13px;line-height:1.5">
+                        <p>Jalankan SQL ini sekali di Supabase (menu <b>SQL Editor</b>):</p>
+                        <pre style="background:#f3f4f6;padding:8px;border-radius:8px;white-space:pre-wrap;font-size:12px;">alter table users add column if not exists is_active boolean not null default true;</pre>
+                        <p>Setelah itu muat ulang halaman ini.</p></div>`
+                });
+            }
+            async function setUsersActive(targets, active) {
+                if (window.usersActiveColumnMissing) { showActiveColumnHelp(); return; }
+                const eligible = targets.filter(u => u.role !== 'admin' && !isSelfUser(u));
+                if (eligible.length === 0) { showToast('Akun admin tidak bisa diaktifkan/dinonaktifkan', 'error'); return; }
+                const changing = eligible.filter(u => isUserActive(u) !== active);
+                if (changing.length === 0) { showToast(`Semua pengguna tersebut sudah ${active ? 'aktif' : 'nonaktif'}`, 'info'); return; }
+                const skipped = targets.length - eligible.length;
+                const res = await Swal.fire({
+                    icon: 'warning',
+                    title: `${active ? 'Aktifkan' : 'Nonaktifkan'} ${changing.length} pengguna?`,
+                    text: (active ? 'Mereka dapat login kembali.' : 'Mereka tidak bisa login sampai diaktifkan kembali.') + (skipped ? ` (${skipped} akun admin/akun Anda dilewati)` : ''),
+                    showCancelButton: true,
+                    confirmButtonText: active ? 'Ya, Aktifkan' : 'Ya, Nonaktifkan',
+                    cancelButtonText: 'Batal'
+                });
+                if (!res.isConfirmed) return;
+                try {
+                    showLoading();
+                    for (let i = 0; i < changing.length; i += 200) {
+                        const chunk = changing.slice(i, i + 200);
+                        const { error } = await dbClient.from('users').update({ is_active: active }).in('id', chunk.map(u => u.id));
+                        if (error) throw error;
+                        chunk.forEach(u => { u.is_active = active; });
+                    }
+                    showToast(`${changing.length} pengguna ${active ? 'diaktifkan' : 'dinonaktifkan'}`, 'success');
+                } catch (err) {
+                    console.error('Gagal mengubah status akun:', err);
+                    if (/is_active/i.test(String(err.message))) { window.usersActiveColumnMissing = true; showActiveColumnHelp(); }
+                    else showToast('Gagal mengubah status akun: ' + (err.message || 'kesalahan database'), 'error');
+                } finally {
+                    hideLoading();
+                    renderUsersSection();
+                }
+            }
+            async function bulkSetActive(active) {
+                const sc = await chooseUserScope(active ? 'Aktifkan akun' : 'Nonaktifkan akun');
+                if (sc) await setUsersActive(sc.users, active);
+            }
+            async function toggleUserActive(id) {
+                const u = allUsers.find(x => String(x.id) === String(id));
+                if (u) await setUsersActive([u], !isUserActive(u));
+            }
+
+            // ---------- Hapus terpilih / berdasarkan filter ----------
+            async function bulkDeleteUsers() {
+                const sc = await chooseUserScope('Hapus pengguna');
+                if (!sc) return;
+                let targets = sc.users.filter(u => !isSelfUser(u));
+                if (sc.scope === 'filter') targets = targets.filter(u => u.role !== 'admin'); // admin hanya bisa dihapus lewat centang
+                const skipped = sc.users.length - targets.length;
+                if (targets.length === 0) { showToast('Tidak ada pengguna yang bisa dihapus (akun Anda dan admin hasil filter dilewati)', 'error'); return; }
+                const adminCount = targets.filter(u => u.role === 'admin').length;
+                const cfg = {
+                    icon: 'warning',
+                    title: 'Hapus pengguna?',
+                    html: `<b>${targets.length}</b> pengguna akan dihapus <b>permanen</b>.` +
+                        (adminCount ? `<br>Termasuk <b>${adminCount}</b> akun admin.` : '') +
+                        (skipped ? `<br><span style="font-size:12px;color:#6b7280">${skipped} akun dilewati (akun Anda / admin dari filter).</span>` : ''),
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'Ya, Hapus',
+                    cancelButtonText: 'Batal'
+                };
+                if (sc.scope === 'filter' || targets.length > 20) {
+                    cfg.input = 'text';
+                    cfg.inputPlaceholder = 'Ketik HAPUS untuk melanjutkan';
+                    cfg.inputValidator = (v) => (v === 'HAPUS' ? undefined : 'Ketik HAPUS (huruf besar) untuk melanjutkan');
+                }
+                const res = await Swal.fire(cfg);
+                if (!res.isConfirmed) return;
+                const deleted = new Set();
+                try {
+                    showLoading();
+                    for (let i = 0; i < targets.length; i += 100) {
+                        const chunk = targets.slice(i, i + 100);
+                        const { error } = await dbClient.from('users').delete().in('id', chunk.map(u => u.id));
+                        if (error) throw error;
+                        chunk.forEach(u => deleted.add(String(u.id)));
+                    }
+                    showToast(`${deleted.size} pengguna dihapus`, 'success');
+                } catch (err) {
+                    console.error('Gagal menghapus pengguna:', err);
+                    showToast(`Gagal menghapus (berhasil ${deleted.size} dari ${targets.length}): ` + (err.message || 'kesalahan database'), 'error');
+                } finally {
+                    hideLoading();
+                    allUsers = allUsers.filter(u => !deleted.has(String(u.id)));
+                    deleted.forEach(id => userSel().delete(id));
+                    if (typeof invalidateDashboardCache === 'function') invalidateDashboardCache();
+                    renderUsersSection();
+                }
+            }
+
+            // ---------- Ubah data ----------
+            function classOptionsHTML(current) {
+                let opts = generateClassOptions();
+                if (current && !opts.includes(`value="${current}"`)) opts = `<option value="${escHtml(current)}">${escHtml(current)}</option>` + opts;
+                return `<option value="">Pilih Kelas</option>` + opts.replace(`value="${current}"`, `value="${current}" selected`);
+            }
+            async function editUser(id) {
+                const u = allUsers.find(x => String(x.id) === String(id));
+                if (!u) return;
+                const isSiswa = u.role === 'siswa';
+                const inp = 'width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;';
+                const lbl = 'display:block;font-size:12px;font-weight:600;color:#374151;margin:10px 0 4px;';
+                const res = await Swal.fire({
+                    title: 'Ubah Data Pengguna',
+                    html: `<div style="text-align:left">
+                        <label style="${lbl}">Username</label>
+                        <input style="${inp}background:#f3f4f6;" value="${escHtml(u.username)}" disabled>
+                        <label style="${lbl}">Nama Lengkap</label>
+                        <input id="editUserName" style="${inp}" value="${escHtml(u.name)}">
+                        ${isSiswa ? `<label style="${lbl}">Kelas</label><select id="editUserClass" style="${inp}">${classOptionsHTML(String(u.class || ''))}</select>` : ''}
+                        <p style="font-size:11px;color:#6b7280;margin-top:10px">Username tidak bisa diubah. Perubahan nama tidak mengubah nama pada hasil ujian yang sudah ada.</p>
+                    </div>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Simpan',
+                    cancelButtonText: 'Batal',
+                    preConfirm: () => {
+                        const name = document.getElementById('editUserName').value.trim();
+                        const cls = isSiswa ? document.getElementById('editUserClass').value : undefined;
+                        if (!name) { Swal.showValidationMessage('Nama tidak boleh kosong'); return false; }
+                        if (isSiswa && !cls) { Swal.showValidationMessage('Kelas wajib dipilih'); return false; }
+                        return isSiswa ? { name, class: cls } : { name };
+                    }
+                });
+                if (!res.isConfirmed) return;
+                try {
+                    showLoading();
+                    const { error } = await dbClient.from('users').update(res.value).eq('id', u.id);
+                    if (error) throw error;
+                    Object.assign(u, res.value);
+                    showToast('Data pengguna diperbarui', 'success');
+                } catch (err) {
+                    console.error('Gagal mengubah pengguna:', err);
+                    showToast('Gagal menyimpan: ' + (err.message || 'kesalahan database'), 'error');
+                } finally {
+                    hideLoading();
+                    renderUsersSection();
+                }
+            }
+            async function bulkEditUsers() {
+                const targets = allUsers.filter(u => userSel().has(String(u.id)) && u.role === 'siswa');
+                if (targets.length === 0) { showToast('Centang siswa yang akan diubah kelasnya terlebih dahulu', 'error'); return; }
+                const res = await Swal.fire({
+                    title: `Ubah kelas ${targets.length} siswa`,
+                    html: `<select id="bulkNewClass" style="width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;">${classOptionsHTML('')}</select>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Simpan',
+                    cancelButtonText: 'Batal',
+                    preConfirm: () => {
+                        const v = document.getElementById('bulkNewClass').value;
+                        if (!v) { Swal.showValidationMessage('Pilih kelas baru'); return false; }
+                        return v;
+                    }
+                });
+                if (!res.isConfirmed) return;
+                try {
+                    showLoading();
+                    for (let i = 0; i < targets.length; i += 200) {
+                        const chunk = targets.slice(i, i + 200);
+                        const { error } = await dbClient.from('users').update({ class: res.value }).in('id', chunk.map(u => u.id));
+                        if (error) throw error;
+                        chunk.forEach(u => { u.class = res.value; });
+                    }
+                    showToast(`Kelas ${targets.length} siswa diubah ke ${res.value}`, 'success');
+                } catch (err) {
+                    console.error('Gagal mengubah kelas massal:', err);
+                    showToast('Gagal mengubah kelas: ' + (err.message || 'kesalahan database'), 'error');
+                } finally {
+                    hideLoading();
+                    renderUsersSection();
+                }
+            }
+
+            // ---------- Ekspor ----------
+            const USER_EXPORT_HEADERS = ['username', 'password', 'name', 'role', 'class', 'photo', 'subject', 'is_login', 'status'];
+            const USER_SHEET_COLS = [{ wch: 20.4 }, { wch: 20.3 }, { wch: 44.5 }, { wch: 9.1 }, { wch: 9 }, { wch: 14 }, { wch: 17.9 }, { wch: 10 }, { wch: 10 }];
+            function showExportUsers() {
+                const tab = userTabNow();
+                const n = getFilteredUsers(tab).length;
+                const b = 'display:block;width:100%;padding:10px;border-radius:10px;border:1px solid #d1d5db;background:#fff;font-weight:600;font-size:14px;cursor:pointer;margin-top:8px;';
+                Swal.fire({
+                    title: 'Ekspor Pengguna',
+                    html: `<p style="font-size:13px;color:#6b7280">${n} pengguna (${tab === 'siswa' ? 'siswa' : 'guru &amp; admin'}, sesuai filter saat ini).<br>Password tidak ikut diekspor.</p>
+                        <button style="${b}" onclick="Swal.close(); exportUsers('xlsx')">📗 Excel (.xlsx)</button>
+                        <button style="${b}" onclick="Swal.close(); exportUsers('csv')">📄 CSV (.csv)</button>
+                        <button style="${b}" onclick="Swal.close(); downloadUserTemplate()">📋 Template Impor (kosong)</button>`,
+                    showConfirmButton: false,
+                    showCloseButton: true
+                });
+            }
+            function userExportRows(users, photoMap) {
+                return users.map(u => ({
+                    username: u.username,
+                    password: '',
+                    name: u.name || '',
+                    role: u.role,
+                    class: /^[1-9]\d*$/.test(String(u.class || '')) ? Number(u.class) : (u.class || ''),
+                    photo: (photoMap && photoMap[u.username]) || '',
+                    subject: u.subject || '',
+                    is_login: u.role === 'siswa' ? String(!!u.is_login) : '',
+                    status: u.role === 'admin' ? '' : (isUserActive(u) ? 'Aktif' : 'Nonaktif')
+                }));
+            }
+            async function exportUsers(format) {
+                const tab = userTabNow();
+                const users = getFilteredUsers(tab);
+                if (users.length === 0) { showToast('Tidak ada data untuk diekspor', 'error'); return; }
+                // URL foto tidak ikut dimuat di daftar pengguna, jadi diambil saat ekspor
+                const photoMap = {};
+                try {
+                    showLoading();
+                    const photoRows = await fetchAllRows('users', 'username, photo');
+                    photoRows.forEach(r => { photoMap[r.username] = r.photo || ''; });
+                } catch (err) {
+                    console.warn('Foto tidak ikut diekspor:', err);
+                } finally {
+                    hideLoading();
+                }
+                const rows = userExportRows(users, photoMap);
+                const base = `Pengguna_${tab === 'siswa' ? 'Siswa' : 'Guru_Admin'}_${new Date().toISOString().slice(0, 10)}`;
+                if (format === 'csv') {
+                    const esc = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+                    const csv = [USER_EXPORT_HEADERS.join(',')].concat(rows.map(r => USER_EXPORT_HEADERS.map(h => esc(r[h])).join(','))).join('\r\n');
+                    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = base + '.csv';
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+                } else {
+                    const ws = XLSX.utils.json_to_sheet(rows, { header: USER_EXPORT_HEADERS });
+                    ws['!cols'] = USER_SHEET_COLS;
+                    const wb = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(wb, ws, 'Pengguna');
+                    XLSX.writeFile(wb, base + '.xlsx');
+                }
+                showToast(`${rows.length} pengguna diekspor`, 'success');
+            }
+            function downloadUserTemplate() {
+                const rows = [
+                    { username: 'siswa001', password: 'rahasia123', name: 'Contoh Siswa', role: 'siswa', class: 71, status: 'Aktif' },
+                    { username: 'guru001', password: 'rahasia123', name: 'Contoh Guru', role: 'guru', class: 7, subject: 'Informatika', status: 'Aktif' }
+                ];
+                const ws = XLSX.utils.json_to_sheet(rows, { header: USER_EXPORT_HEADERS });
+                ws['!cols'] = USER_SHEET_COLS;
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'template');
+                XLSX.writeFile(wb, 'Template_Impor_Pengguna.xlsx');
+            }
+
+            // ---------- Hash password ----------
+            function showHashFunctionHelp() {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Siapkan fungsi hash di database',
+                    width: 640,
+                    html: `<div style="text-align:left;font-size:13px;line-height:1.5">
+                        <p>Jalankan SQL ini sekali di Supabase (<b>SQL Editor</b>), lalu klik tombol Hash Password lagi:</p>
+                        <pre style="background:#f3f4f6;padding:8px;border-radius:8px;white-space:pre-wrap;font-size:11.5px;user-select:all">create or replace function public.hash_new_passwords()
+returns integer
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare n integer;
+begin
+  update public.users
+  set password = crypt(password, gen_salt('bf'))
+  where password not like '$2a$%'
+    and password not like '$2b$%';
+  get diagnostics n = row_count;
+  return n;
+end;
+$$;
+
+grant execute on function public.hash_new_passwords() to anon, authenticated;</pre></div>`
+                });
+            }
+            async function hashNewPasswords(skipConfirm) {
+                if (!skipConfirm) {
+                    const res = await Swal.fire({
+                        icon: 'question',
+                        title: 'Hash password?',
+                        text: 'Semua password akan di-hash sekarang.',
+                        showCancelButton: true,
+                        confirmButtonText: 'Ya, Hash',
+                        cancelButtonText: 'Batal'
+                    });
+                    if (!res.isConfirmed) return;
+                }
+                try {
+                    showLoading();
+                    const { data, error } = await dbClient.rpc('hash_new_passwords');
+                    if (error) throw error;
+                    const n = Number(data) || 0;
+                    showToast(n ? `${n} password berhasil di-hash` : 'Tidak ada password yang perlu di-hash', 'success');
+                } catch (err) {
+                    console.error('Gagal hash password:', err);
+                    if (err && (err.code === 'PGRST202' || /hash_new_passwords/i.test(String(err.message)))) showHashFunctionHelp();
+                    else showToast('Gagal hash password: ' + ((err && err.message) || 'kesalahan database'), 'error');
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // ---------- Impor ----------
+            async function showImportUsers() {
+                const res = await Swal.fire({
+                    title: 'Impor Pengguna',
+                    html: `<div style="text-align:left;font-size:13px;line-height:1.55">
+                        <p>File Excel (.xlsx) atau CSV dengan kolom:</p>
+                        <p><b>username, password, name, role, class, photo, subject, is_login, status</b></p>
+                        <ul style="margin:6px 0 8px 18px;list-style:disc;color:#4b5563">
+                            <li><b>role</b>: siswa / guru. <b>class</b> wajib diisi;<br> untuk <b>siswa</b>, misal 71/71 dst.<br> untuk <b>guru</b> isi jenjang, misal 7/8/9.</li>
+                            <li>Username yang baru dibuat (password wajib).<br>Username yang sudah ada <b>diperbarui</b> (nama, kelas, mapel, status); passwordnya tidak diubah.</li>
+                            <li><b>status</b> (opsional): Aktif / Nonaktif. Kolom <b>is_login</b> diabaikan saat impor.</li>
+                            <li>Setelah impor akun baru, klik <b>🔐 Hash Password</b>.</li>
+                        </ul>
+                        <button type="button" onclick="downloadUserTemplate()" style="font-size:12px;text-decoration:underline;color:#2563eb;background:none;border:none;cursor:pointer;padding:0;margin-bottom:8px">📋 Unduh template</button>
+                        <input type="file" id="importUsersFile" accept=".xlsx,.xls,.csv" style="display:block;width:100%;font-size:13px">
+                    </div>`,
+                    showCancelButton: true,
+                    confirmButtonText: 'Baca File',
+                    cancelButtonText: 'Batal',
+                    preConfirm: () => {
+                        const f = document.getElementById('importUsersFile').files[0];
+                        if (!f) { Swal.showValidationMessage('Pilih file terlebih dahulu'); return false; }
+                        return f;
+                    }
+                });
+                if (res.isConfirmed) await importUsersFromFile(res.value);
+            }
+            function parseUserStatus(v) {
+                const t = String(v == null ? '' : v).trim().toLowerCase();
+                if (!t) return undefined;
+                if (['aktif', 'active', 'true', '1', 'ya', 'y'].includes(t)) return true;
+                if (['nonaktif', 'non-aktif', 'tidak aktif', 'inactive', 'false', '0', 'tidak', 'n'].includes(t)) return false;
+                return undefined;
+            }
+            async function importUsersFromFile(file) {
+                let rawRows;
+                try {
+                    const buf = await file.arrayBuffer();
+                    const wb = XLSX.read(buf, { type: 'array' });
+                    rawRows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '', raw: false });
+                } catch (err) {
+                    console.error('Gagal membaca file impor:', err);
+                    showToast('File tidak bisa dibaca. Gunakan .xlsx atau .csv', 'error');
+                    return;
+                }
+                const alias = {
+                    username: 'username', user: 'username',
+                    password: 'password', katasandi: 'password',
+                    name: 'name', nama: 'name', namalengkap: 'name',
+                    photo: 'photo', foto: 'photo',
+                    role: 'role', peran: 'role',
+                    class: 'class', kelas: 'class',
+                    subject: 'subject', mapel: 'subject', matapelajaran: 'subject',
+                    status: 'status', isactive: 'status', aktif: 'status', akun: 'status'
+                };
+                const rows = rawRows.map(r => {
+                    const o = {};
+                    Object.keys(r).forEach(k => {
+                        const key = alias[String(k).trim().toLowerCase().replace(/[\s_]+/g, '')];
+                        if (key) o[key] = String(r[k] == null ? '' : r[k]).trim();
+                    });
+                    return o;
+                }).filter(o => Object.values(o).some(v => v !== ''));
+                if (rows.length === 0) { showToast('File kosong atau kolom tidak dikenali', 'error'); return; }
+
+                const byUsername = new Map(allUsers.map(u => [String(u.username), u]));
+                const seen = new Set();
+                const toInsert = [], toUpdate = [], errors = [];
+                let passwordIgnored = 0;
+                rows.forEach((r, i) => {
+                    const line = i + 2;
+                    if (!r.username) { errors.push(`Baris ${line}: username kosong`); return; }
+                    if (seen.has(r.username)) { errors.push(`Baris ${line}: username ${r.username} dobel di file`); return; }
+                    seen.add(r.username);
+                    const status = parseUserStatus(r.status);
+                    const existing = byUsername.get(r.username);
+                    if (existing) {
+                        if (existing.role === 'admin') { errors.push(`Baris ${line}: ${r.username} adalah admin (tidak bisa diubah lewat impor)`); return; }
+                        if (r.password) passwordIgnored++;
+                        const patch = {};
+                        if (r.name) patch.name = r.name;
+                        if (r.photo) patch.photo = r.photo;
+                        if (existing.role === 'siswa') { if (r.class) patch.class = r.class; }
+                        else {
+                            if (r.subject) patch.subject = r.subject;
+                            const g = (r.class.match(/[789]/g) || []);
+                            if (r.class) patch.class = [...new Set(g)].sort().join('');
+                        }
+                        if (status !== undefined && !window.usersActiveColumnMissing) patch.is_active = status;
+                        if (Object.keys(patch).length) toUpdate.push({ id: existing.id, username: r.username, patch });
+                        return;
+                    }
+                    const role = r.role.toLowerCase();
+                    if (!['siswa', 'guru'].includes(role)) { errors.push(`Baris ${line}: role ${r.username} harus siswa atau guru`); return; }
+                    if (!r.password) { errors.push(`Baris ${line}: password ${r.username} kosong`); return; }
+                    if (!r.name) { errors.push(`Baris ${line}: nama ${r.username} kosong`); return; }
+                    if (role === 'siswa' && !r.class) { errors.push(`Baris ${line}: kelas siswa ${r.username} kosong`); return; }
+                    const row = { username: r.username, password: r.password, name: r.name, role, class: '', photo: r.photo || '' };
+                    if (role === 'siswa') row.class = r.class;
+                    else {
+                        row.class = [...new Set(r.class.match(/[789]/g) || [])].sort().join('');
+                        if (r.subject) row.subject = r.subject;
+                    }
+                    if (status === false && !window.usersActiveColumnMissing) row.is_active = false;
+                    toInsert.push(row);
+                });
+
+                const errHtml = errors.length
+                    ? `<div style="margin-top:8px;max-height:140px;overflow:auto;text-align:left;font-size:12px;color:#b91c1c;background:#fef2f2;border-radius:8px;padding:8px">${errors.slice(0, 15).map(escHtml).join('<br>')}${errors.length > 15 ? `<br>…dan ${errors.length - 15} lainnya` : ''}</div>`
+                    : '';
+                const confirmRes = await Swal.fire({
+                    icon: errors.length ? 'warning' : 'question',
+                    title: 'Ringkasan Impor',
+                    html: `<div style="font-size:14px;line-height:1.6">
+                        Pengguna baru: <b>${toInsert.length}</b><br>
+                        Diperbarui: <b>${toUpdate.length}</b>${passwordIgnored ? `<br><span style="font-size:12px;color:#6b7280">Password ${passwordIgnored} akun lama diabaikan</span>` : ''}<br>
+                        Baris bermasalah (dilewati): <b>${errors.length}</b>${errHtml}</div>`,
+                    showCancelButton: true,
+                    showConfirmButton: toInsert.length + toUpdate.length > 0,
+                    confirmButtonText: 'Lanjutkan Impor',
+                    cancelButtonText: 'Batal'
+                });
+                if (!confirmRes.isConfirmed) return;
+
+                let okInsert = 0, okUpdate = 0;
+                const failures = [];
+                try {
+                    showLoading();
+                    for (let i = 0; i < toInsert.length; i += 100) {
+                        const chunk = toInsert.slice(i, i + 100);
+                        const { error } = await dbClient.from('users').insert(chunk);
+                        if (!error) { okInsert += chunk.length; continue; }
+                        for (const row of chunk) { // satu per satu agar ketahuan baris yang gagal
+                            const { error: e2 } = await dbClient.from('users').insert([row]);
+                            if (e2) failures.push(`${row.username}: ${e2.message}`); else okInsert++;
+                        }
+                    }
+                    for (let i = 0; i < toUpdate.length; i += 10) {
+                        const batch = toUpdate.slice(i, i + 10);
+                        await Promise.all(batch.map(async it => {
+                            const { error } = await dbClient.from('users').update(it.patch).eq('id', it.id);
+                            if (error) failures.push(`${it.username}: ${error.message}`); else okUpdate++;
+                        }));
+                    }
+                    allUsers = await fetchUsersList();
+                } catch (err) {
+                    console.error('Gagal impor pengguna:', err);
+                    failures.push(err.message || 'kesalahan database');
+                } finally {
+                    hideLoading();
+                    if (typeof invalidateDashboardCache === 'function') invalidateDashboardCache();
+                    renderUsersSection();
+                }
+                const doneRes = await Swal.fire({
+                    icon: failures.length ? 'warning' : 'success',
+                    title: 'Impor selesai',
+                    showCancelButton: okInsert > 0,
+                    confirmButtonText: okInsert > 0 ? '🔐 Hash Password Sekarang' : 'OK',
+                    cancelButtonText: 'Nanti',
+                    html: `<div style="font-size:14px;line-height:1.6">Dibuat: <b>${okInsert}</b> · Diperbarui: <b>${okUpdate}</b> · Gagal: <b>${failures.length}</b>${okInsert > 0 ? '<br><span style="font-size:12px;color:#6b7280">Password akun baru perlu di-hash sebelum bisa dipakai login.</span>' : ''}
+                        ${failures.length ? `<div style="margin-top:8px;max-height:140px;overflow:auto;text-align:left;font-size:12px;color:#b91c1c;background:#fef2f2;border-radius:8px;padding:8px">${failures.slice(0, 15).map(escHtml).join('<br>')}</div>` : ''}</div>`
+                });
+                if (doneRes.isConfirmed && okInsert > 0) await hashNewPasswords(true);
+            }
 
             function renderUsersSection() {
                 const { config, customFont, textColor, primaryColor, baseFontStack } = RC;
@@ -5118,6 +5707,7 @@
                             <span id="uTabCount-${key}" class="px-1.5 py-0.5 rounded-full text-[10px] md:text-[11px] font-bold">0</span>
                         </button>`;
 
+                    const bb = (label, fn, cls, id) => `<button type="button" ${id ? `id="${id}"` : ''} onclick="${fn}" class="px-3 py-2 rounded-xl text-xs font-semibold border transition whitespace-nowrap ${cls}">${label}</button>`;
                     const selCls = 'w-full bg-white border border-gray-300 rounded-xl px-3 py-2 text-xs md:text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/40 focus:border-emerald-500';
 
                     container.innerHTML = `
@@ -5176,11 +5766,34 @@
                                         <button onclick="resetAllOnlineUsers()" class="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition text-xs md:text-sm font-semibold whitespace-nowrap">🚨 Reset Semua Online</button>
                                     </div>
 
+                                    <select id="userAccountFilter" onchange="setUserAccountFilter(this.value)" class="${selCls} sm:w-auto">
+                                        <option value="all">Semua Akun</option>
+                                        <option value="active">✅ Akun Aktif</option>
+                                        <option value="inactive">⛔ Akun Nonaktif</option>
+                                    </select>
+
                                     <div id="usersResultInfo" class="text-xs text-gray-500 lg:ml-auto whitespace-nowrap"></div>
                                 </div>
 
+                                <div id="usersBulkBar" class="px-3 md:px-4 pb-3 flex flex-col gap-2">
+                                    <div id="usersActiveWarning" style="display:none;" class="text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-3 py-2">
+                                        ⚠️ Kolom <b>is_active</b> belum ada di tabel users, jadi fitur aktivasi akun belum bisa dipakai.
+                                        <button type="button" onclick="showActiveColumnHelp()" class="underline font-semibold">Lihat caranya</button>
+                                    </div>
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <span id="usersSelectedInfo" class="text-xs text-gray-500 mr-auto"></span>
+                                        ${bb('📤 Ekspor', 'showExportUsers()', 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')}
+                                        ${bb('📥 Impor', 'showImportUsers()', 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')}
+                                        ${bb('✏️ Ubah Kelas Terpilih', 'bulkEditUsers()', 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50', 'usersBulkEditBtn')}
+                                        ${bb('✅ Aktifkan', 'bulkSetActive(true)', 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50')}
+                                        ${bb('⛔ Nonaktifkan', 'bulkSetActive(false)', 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100')}
+                                        ${bb('🔐 Hash', 'hashNewPasswords()', 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50')}
+                                        ${bb('🗑️ Hapus', 'bulkDeleteUsers()', 'bg-white text-red-600 border-red-200 hover:bg-red-50')}
+                                    </div>
+                                </div>
+
                                 <div class="overflow-x-auto">
-                                    <table class="w-full min-w-[480px]">
+                                    <table class="w-full min-w-[760px]">
                                         <thead id="usersTableHead"></thead>
                                         <tbody id="usersTableBody" class="divide-y divide-gray-100"></tbody>
                                     </table>
@@ -5228,46 +5841,41 @@
                 const stSel = document.getElementById('userStatusFilter');
                 if (stSel) stSel.value = window.currentUserFilter || 'all';
 
+                const acSel = document.getElementById('userAccountFilter');
+                if (acSel) acSel.value = window.currentAccountFilter || 'all';
+                const warnBox = document.getElementById('usersActiveWarning');
+                if (warnBox) warnBox.style.display = window.usersActiveColumnMissing ? '' : 'none';
+                const bulkEditBtn = document.getElementById('usersBulkEditBtn');
+                if (bulkEditBtn) bulkEditBtn.style.display = tab === 'siswa' ? '' : 'none';
+
                 const thCls = 'text-left px-4 py-3 text-[11px] md:text-xs font-semibold uppercase tracking-wide text-gray-500';
                 const head = document.getElementById('usersTableHead');
                 if (head) {
+                    const chkTh = `<th class="pl-4 pr-0 py-3 w-8"><input type="checkbox" id="usersSelectAll" onchange="toggleSelectAllUsersPage(this.checked)" title="Pilih semua di halaman ini" class="w-4 h-4 accent-emerald-600"></th>`;
                     head.innerHTML = tab === 'siswa'
-                        ? `<tr class="bg-gray-50 border-y border-gray-100"><th class="${thCls}">Siswa</th><th class="${thCls}">Kelas</th><th class="${thCls}">Status Sesi</th><th class="${thCls} text-right">Aksi</th></tr>`
-                        : `<tr class="bg-gray-50 border-y border-gray-100"><th class="${thCls}">Pengguna</th><th class="${thCls}">Role</th><th class="${thCls}">Pengaturan Guru</th><th class="${thCls} text-right">Aksi</th></tr>`;
+                        ? `<tr class="bg-gray-50 border-y border-gray-100">${chkTh}<th class="${thCls}">Siswa</th><th class="${thCls}">Kelas</th><th class="${thCls}">Status Sesi</th><th class="${thCls}">Akun</th><th class="${thCls} text-right">Aksi</th></tr>`
+                        : `<tr class="bg-gray-50 border-y border-gray-100">${chkTh}<th class="${thCls}">Pengguna</th><th class="${thCls}">Role</th><th class="${thCls}">Pengaturan Guru</th><th class="${thCls}">Akun</th><th class="${thCls} text-right">Aksi</th></tr>`;
                 }
 
                 updateUserStatCards();
 
                 // --- FASE 3: FILTER, URUTKAN, PAGINASI ---
-                let list = usersOfTab(tab);
-                if (tab === 'siswa') {
-                    if (window.currentUserFilter === 'online') list = list.filter(u => u.is_login);
-                    else if (window.currentUserFilter === 'offline') list = list.filter(u => !u.is_login);
-                    if (window.currentUserClass) list = list.filter(u => String(u.class || '').trim() === window.currentUserClass);
-                }
+                let list = getFilteredUsers(tab);
                 const kw = (window.currentUserSearch || '').trim().toLowerCase();
-                if (kw) {
-                    list = list.filter(u =>
-                        (u.name && u.name.toLowerCase().includes(kw)) ||
-                        (u.username && String(u.username).toLowerCase().includes(kw))
-                    );
-                }
-                const byName = (a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'id');
-                if (tab === 'siswa') {
-                    list = [...list].sort((a, b) => String(a.class || '').localeCompare(String(b.class || ''), undefined, { numeric: true }) || byName(a, b));
-                } else {
-                    const rank = r => (r === 'admin' ? 0 : 1);
-                    list = [...list].sort((a, b) => rank(a.role) - rank(b.role) || byName(a, b));
-                }
 
                 const info = document.getElementById('usersResultInfo');
-                if (info) info.textContent = `${list.length} ${tab === 'siswa' ? 'siswa' : 'pengguna'}${kw || window.currentUserClass || (tab === 'siswa' && window.currentUserFilter !== 'all') ? ' (terfilter)' : ''}`;
+                if (info) info.textContent = `${list.length} ${tab === 'siswa' ? 'siswa' : 'pengguna'}${kw || window.currentUserClass || (window.currentAccountFilter && window.currentAccountFilter !== 'all') || (tab === 'siswa' && window.currentUserFilter !== 'all') ? ' (terfilter)' : ''}`;
 
                 const pg = paginate(list, pageState.users);
                 pageState.users = pg.current;
                 renderPager('usersPager', pg, 'users');
 
-                const colCount = 4;
+                // Pilihan (centang): simpan id halaman ini, buang id yang sudah tidak ada
+                window._userPageIds = pg.items.filter(u => !isSelfUser(u)).map(u => String(u.id));
+                userSel().forEach(id => { if (!allUsers.some(u => String(u.id) === id)) userSel().delete(id); });
+                updateUsersBulkBar();
+
+                const colCount = 6;
                 if (list.length === 0) {
                     tbody.innerHTML = `
                         <tr><td colspan="${colCount}" class="text-center py-14">
@@ -5281,6 +5889,9 @@
                 // --- FASE 4: BARIS TABEL ---
                 const btnBase = 'px-2.5 py-1.5 rounded-lg text-[11px] md:text-xs font-semibold border transition whitespace-nowrap';
                 tbody.innerHTML = pg.items.map(user => {
+                    const self = isSelfUser(user);
+                    const act = isUserActive(user);
+                    const chkCell = `<td class="pl-4 pr-0 py-3 w-8"><input type="checkbox" ${self ? 'disabled title="Akun yang sedang dipakai"' : ''} ${userSel().has(String(user.id)) ? 'checked' : ''} onchange="toggleUserSelect('${user.id}', this.checked)" class="w-4 h-4 accent-emerald-600"></td>`;
                     const nameCell = `
                         <td class="px-4 py-3">
                             <div class="flex items-center gap-3 min-w-0">
@@ -5291,15 +5902,29 @@
                                 </div>
                             </div>
                         </td>`;
+                    const accountCell = user.role === 'admin'
+                        ? `<td class="px-4 py-3"><span class="text-xs text-gray-300">—</span></td>`
+                        : `<td class="px-4 py-3"><div class="flex items-center gap-2">
+                                <button type="button" role="switch" aria-checked="${act}" onclick="toggleUserActive('${user.id}')" title="${act ? 'Nonaktifkan' : 'Aktifkan'} akun"
+                                    class="relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${act ? 'bg-emerald-500' : 'bg-gray-300'}">
+                                    <span class="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${act ? 'translate-x-4' : 'translate-x-0.5'}"></span>
+                                </button>
+                                <span class="text-[11px] font-semibold ${act ? 'text-emerald-700' : 'text-gray-400'}">${act ? 'Aktif' : 'Nonaktif'}</span>
+                           </div></td>`;
+                    const editBtn = `<button onclick="editUser('${user.id}')" class="${btnBase} bg-white text-sky-700 border-sky-200 hover:bg-sky-50" title="Ubah data pengguna">✏️ Ubah</button>`;
                     const delBtn = `<button onclick="deleteUser('${user.id}')" class="${btnBase} bg-white text-red-600 border-red-200 hover:bg-red-50" title="Hapus pengguna">🗑️ Hapus</button>`;
+                    const rowCls = `hover:bg-emerald-50/40 transition ${act ? '' : 'opacity-60'}`;
 
                     if (tab === 'siswa') {
                         return `
-                            <tr id="user-row-${escHtml(user.username)}" class="hover:bg-emerald-50/40 transition">
+                            <tr id="user-row-${escHtml(user.username)}" class="${rowCls}">
+                                ${chkCell}
                                 ${nameCell}
                                 <td class="px-4 py-3"><span class="inline-block px-2.5 py-1 rounded-lg bg-gray-100 text-gray-700 text-[11px] md:text-xs font-bold">${escHtml(user.class || '-')}</span></td>
                                 <td class="px-4 py-3"><span id="status-login-${escHtml(user.username)}" class="${userStatusClass(!!user.is_login)}">${userStatusInner(!!user.is_login)}</span></td>
+                                ${accountCell}
                                 <td class="px-4 py-3"><div class="flex justify-end gap-1.5">
+                                    ${editBtn}
                                     <button data-u="${escHtml(user.username)}" onclick="resetSiswaLogin(this.dataset.u)" class="${btnBase} bg-white text-amber-700 border-amber-300 hover:bg-amber-50" title="Reset sesi login jika siswa terkunci">🔓 Reset</button>
                                     ${delBtn}
                                 </div></td>
@@ -5307,7 +5932,8 @@
                     }
                     const isAdminRole = user.role === 'admin';
                     return `
-                        <tr id="user-row-${escHtml(user.username)}" class="hover:bg-emerald-50/40 transition">
+                        <tr id="user-row-${escHtml(user.username)}" class="${rowCls}">
+                            ${chkCell}
                             ${nameCell}
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] md:text-xs font-semibold ${isAdminRole ? 'bg-violet-100 text-violet-800' : 'bg-emerald-100 text-emerald-800'}">
@@ -5315,7 +5941,8 @@
                                 </span>
                             </td>
                             <td class="px-4 py-3">${isAdminRole ? '<span class="text-xs text-gray-300">—</span>' : guruSettingsHTML(user)}</td>
-                            <td class="px-4 py-3"><div class="flex justify-end gap-1.5">${delBtn}</div></td>
+                            ${accountCell}
+                            <td class="px-4 py-3"><div class="flex justify-end gap-1.5">${editBtn}${delBtn}</div></td>
                         </tr>`;
                 }).join('');
             }
@@ -11085,7 +11712,7 @@
                     
                     if (target === 'users') {
                         // 1. AMBIL DATA USERS DARI SUPABASE
-                        const usersData = await fetchAllRows('users', 'id, username, name, role, class, subject, is_login');
+                        const usersData = await fetchUsersList();
                         
                         allUsers = usersData || [];
                         renderUsersSection();
