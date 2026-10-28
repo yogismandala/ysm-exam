@@ -3341,6 +3341,7 @@
                 const { customFont, baseFontStack, baseSize, textColor } = RC;
                 const cur = studentAnswers[currentQuestionIndex] || {};
                 const choices = question.rightChoices || [];
+                const hasMath = choices.some(c => /\\[(\[]/.test(String(c)));
                 return `
                     <div class="space-y-3">
                         <div class="bg-green-50 border-l-4 border-green-500 p-3 mb-2 rounded-r-lg">
@@ -3349,9 +3350,58 @@
                         ${question.options.map((p, i) => `
                             <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-200 rounded-xl bg-white">
                                 <div class="flex-1 font-medium" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">${i + 1}. ${escHtml(p.l)}</div>
-                                ${matchDropdownHTML(i, choices, cur[i], 'pickMatchOption')}
+                                ${hasMath ? matchDropdownHTML(i, choices, cur[i]) : `<select onchange="saveMatchAnswer(${i}, this.value)"
+                                    class="w-full sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
+                                    <option value="">-- Pilih --</option>
+                                    ${choices.map(c => `<option value="${escHtml(c)}" ${cur[i] === c ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
+                                </select>`}
                             </div>`).join('')}
                     </div>`;
+            }
+
+            function matchDropdownHTML(i, choices, selected, pickFn = 'pickMatchChoice') {
+                const placeholder = '<span class="text-gray-400">-- Pilih --</span>';
+                return `
+                    <div class="match-dd relative w-full sm:w-1/2">
+                        <button type="button" onclick="toggleMatchDropdown(this, event)"
+                            class="w-full flex items-center justify-between gap-2 text-left px-3 py-2 bg-white border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
+                            <span class="match-dd-label min-w-0 break-words">${selected ? escHtml(selected) : placeholder}</span>
+                            <span class="text-gray-400 text-xs flex-shrink-0">▼</span>
+                        </button>
+                        <div class="match-dd-list hidden absolute left-0 right-0 z-30 mt-1 bg-white border-2 border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                            <div onclick="${pickFn}(${i}, -1, this)" class="px-3 py-2 cursor-pointer text-gray-400 hover:bg-green-50">-- Pilih --</div>
+                            ${choices.map((c, ci) => `<div onclick="${pickFn}(${i}, ${ci}, this)" class="px-3 py-2 cursor-pointer hover:bg-green-50 break-words ${selected === c ? 'bg-green-100 font-semibold' : ''}">${escHtml(c)}</div>`).join('')}
+                        </div>
+                    </div>`;
+            }
+            function closeMatchDropdowns() {
+                document.querySelectorAll('.match-dd-list').forEach(l => l.classList.add('hidden'));
+            }
+            function toggleMatchDropdown(btn, ev) {
+                ev.stopPropagation();
+                const list = btn.parentElement.querySelector('.match-dd-list');
+                const willOpen = list.classList.contains('hidden');
+                closeMatchDropdowns();
+                if (willOpen) list.classList.remove('hidden');
+                if (!window._matchDdBound) {
+                    window._matchDdBound = true;
+                    document.addEventListener('click', closeMatchDropdowns);
+                }
+            }
+            function pickMatchChoice(leftIdx, choiceIdx, itemEl) {
+                const q = examQuestions[currentQuestionIndex];
+                const value = choiceIdx < 0 ? '' : ((q.rightChoices || [])[choiceIdx] || '');
+                saveMatchAnswer(leftIdx, value);
+                const dd = itemEl.closest('.match-dd');
+                const label = dd.querySelector('.match-dd-label');
+                label.innerHTML = value ? escHtml(value) : '<span class="text-gray-400">-- Pilih --</span>';
+                renderMathIn(label);
+                dd.querySelectorAll('.match-dd-list > div').forEach((d, k) => {
+                    const on = choiceIdx >= 0 && k - 1 === choiceIdx;
+                    d.classList.toggle('bg-green-100', on);
+                    d.classList.toggle('font-semibold', on);
+                });
+                closeMatchDropdowns();
             }
 
             function saveMatchAnswer(leftIdx, value) {
@@ -3366,59 +3416,6 @@
                 sessionStorage.setItem('studentAnswers', encoded);
                 localStorage.setItem('studentAnswers', encoded);
                 renderQuestionNav();
-            }
-
-            function matchDropdownHTML(i, choices, current, pickFn) {
-                const has = current !== undefined && current !== '';
-                return `
-                    <div class="match-dd relative w-full sm:w-1/2">
-                        <button type="button" onclick="toggleMatchDropdown(${i}, event)"
-                            class="w-full flex items-center justify-between gap-2 px-3 py-2 border-2 border-gray-300 rounded-lg bg-white text-left focus:outline-none focus:border-green-500">
-                            <span id="matchLabel-${i}" class="flex-1 min-w-0 break-words">${has ? escHtml(current) : '<span class="text-gray-400">-- Pilih --</span>'}</span>
-                            <span class="text-gray-500 text-xs flex-shrink-0">▾</span>
-                        </button>
-                        <div id="matchList-${i}" class="match-dd-list hidden absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border-2 border-gray-300 rounded-lg shadow-lg">
-                            <div class="px-3 py-2 cursor-pointer text-gray-400 hover:bg-gray-100" onclick="${pickFn}(${i}, -1)">-- Pilih --</div>
-                            ${choices.map((c, ci) => `
-                                <div class="px-3 py-2 cursor-pointer hover:bg-[#e8f3e8] break-words ${has && current === c ? 'bg-[#e8f3e8] font-semibold' : ''}"
-                                    onclick="${pickFn}(${i}, ${ci})">${escHtml(c)}</div>`).join('')}
-                        </div>
-                    </div>`;
-            }
-
-            function closeMatchDropdowns() {
-                document.querySelectorAll('.match-dd-list').forEach(el => el.classList.add('hidden'));
-            }
-            document.addEventListener('click', closeMatchDropdowns);
-
-            function toggleMatchDropdown(i, e) {
-                e.stopPropagation();
-                const list = document.getElementById(`matchList-${i}`);
-                if (!list) return;
-                const wasHidden = list.classList.contains('hidden');
-                closeMatchDropdowns();
-                if (wasHidden) list.classList.remove('hidden');
-            }
-
-            // Siswa: pilih opsi, label diisi salinan HTML opsi yang sudah dirender KaTeX
-            function pickMatchOption(i, ci) {
-                const q = examQuestions[currentQuestionIndex];
-                const value = ci < 0 ? '' : (q.rightChoices || [])[ci];
-                saveMatchAnswer(i, value);
-
-                const list = document.getElementById(`matchList-${i}`);
-                const label = document.getElementById(`matchLabel-${i}`);
-                if (list && label) {
-                    label.innerHTML = ci < 0
-                        ? '<span class="text-gray-400">-- Pilih --</span>'
-                        : list.children[ci + 1].innerHTML;
-                    Array.from(list.children).forEach((el, idx) => {
-                        const on = idx === ci + 1 && ci >= 0;
-                        el.classList.toggle('bg-[#e8f3e8]', on);
-                        el.classList.toggle('font-semibold', on);
-                    });
-                }
-                closeMatchDropdowns();
             }
 
             function saveAnswerDirect(value) {
