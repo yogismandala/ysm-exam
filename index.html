@@ -3344,16 +3344,12 @@
                 return `
                     <div class="space-y-3">
                         <div class="bg-green-50 border-l-4 border-green-500 p-3 mb-2 rounded-r-lg">
-                            <p class="text-sm font-bold text-green-800">💡 Pilih pasangan yang tepat untuk setiap butir di kiri.</p>
+                            <p class="text-sm font-bold text-green-800">💡 Pilih pasangan yang tepat.</p>
                         </div>
                         ${question.options.map((p, i) => `
                             <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-200 rounded-xl bg-white">
                                 <div class="flex-1 font-medium" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px; color: ${textColor};">${i + 1}. ${escHtml(p.l)}</div>
-                                <select onchange="saveMatchAnswer(${i}, this.value)"
-                                    class="w-full sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                                    <option value="">-- Pilih --</option>
-                                    ${choices.map(c => `<option value="${escHtml(c)}" ${cur[i] === c ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
-                                </select>
+                                ${matchDropdownHTML(i, choices, cur[i], 'pickMatchOption')}
                             </div>`).join('')}
                     </div>`;
             }
@@ -3370,6 +3366,59 @@
                 sessionStorage.setItem('studentAnswers', encoded);
                 localStorage.setItem('studentAnswers', encoded);
                 renderQuestionNav();
+            }
+
+            function matchDropdownHTML(i, choices, current, pickFn) {
+                const has = current !== undefined && current !== '';
+                return `
+                    <div class="match-dd relative w-full sm:w-1/2">
+                        <button type="button" onclick="toggleMatchDropdown(${i}, event)"
+                            class="w-full flex items-center justify-between gap-2 px-3 py-2 border-2 border-gray-300 rounded-lg bg-white text-left focus:outline-none focus:border-green-500">
+                            <span id="matchLabel-${i}" class="flex-1 min-w-0 break-words">${has ? escHtml(current) : '<span class="text-gray-400">-- Pilih --</span>'}</span>
+                            <span class="text-gray-500 text-xs flex-shrink-0">▾</span>
+                        </button>
+                        <div id="matchList-${i}" class="match-dd-list hidden absolute z-30 left-0 right-0 mt-1 max-h-60 overflow-y-auto bg-white border-2 border-gray-300 rounded-lg shadow-lg">
+                            <div class="px-3 py-2 cursor-pointer text-gray-400 hover:bg-gray-100" onclick="${pickFn}(${i}, -1)">-- Pilih --</div>
+                            ${choices.map((c, ci) => `
+                                <div class="px-3 py-2 cursor-pointer hover:bg-[#e8f3e8] break-words ${has && current === c ? 'bg-[#e8f3e8] font-semibold' : ''}"
+                                    onclick="${pickFn}(${i}, ${ci})">${escHtml(c)}</div>`).join('')}
+                        </div>
+                    </div>`;
+            }
+
+            function closeMatchDropdowns() {
+                document.querySelectorAll('.match-dd-list').forEach(el => el.classList.add('hidden'));
+            }
+            document.addEventListener('click', closeMatchDropdowns);
+
+            function toggleMatchDropdown(i, e) {
+                e.stopPropagation();
+                const list = document.getElementById(`matchList-${i}`);
+                if (!list) return;
+                const wasHidden = list.classList.contains('hidden');
+                closeMatchDropdowns();
+                if (wasHidden) list.classList.remove('hidden');
+            }
+
+            // Siswa: pilih opsi, label diisi salinan HTML opsi yang sudah dirender KaTeX
+            function pickMatchOption(i, ci) {
+                const q = examQuestions[currentQuestionIndex];
+                const value = ci < 0 ? '' : (q.rightChoices || [])[ci];
+                saveMatchAnswer(i, value);
+
+                const list = document.getElementById(`matchList-${i}`);
+                const label = document.getElementById(`matchLabel-${i}`);
+                if (list && label) {
+                    label.innerHTML = ci < 0
+                        ? '<span class="text-gray-400">-- Pilih --</span>'
+                        : list.children[ci + 1].innerHTML;
+                    Array.from(list.children).forEach((el, idx) => {
+                        const on = idx === ci + 1 && ci >= 0;
+                        el.classList.toggle('bg-[#e8f3e8]', on);
+                        el.classList.toggle('font-semibold', on);
+                    });
+                }
+                closeMatchDropdowns();
             }
 
             function saveAnswerDirect(value) {
@@ -7506,14 +7555,11 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                 } else if (q.question_type === 'menjodohkan') {
                     const cur = (ans && typeof ans === 'object') ? ans : {};
                     body = `<div class="space-y-3">
-                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-green-800">💡 Pilih pasangan yang tepat untuk setiap butir di kiri.</p></div>
+                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-green-800">💡 Pilih pasangan yang tepat.</p></div>
                         ${options.map((p, i) => `
                         <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-200 rounded-xl bg-white">
                             <div class="flex-1 font-medium">${i + 1}. ${escHtml(p.l)}</div>
-                            <select onchange="pvMatch(${i}, this.value)" class="w-full sm:w-1/2 px-3 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-500">
-                                <option value="">-- Pilih --</option>
-                                ${rc.map(c => `<option value="${escHtml(c)}" ${cur[i] === c ? 'selected' : ''}>${escHtml(c)}</option>`).join('')}
-                            </select>
+                            ${matchDropdownHTML(i, rc, cur[i], 'pvPickMatch')}
                             <div class="pv-key text-green-700 font-semibold text-sm">✅ ${escHtml(p.r)}</div>
                         </div>`).join('')}</div>`;
                 } else if (q.question_type === 'isian_singkat') {
@@ -7580,6 +7626,12 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                 const sc = document.getElementById('pvScroll');
                 if (sc) sc.scrollTop = top;
                 renderMathIn(view);
+            }
+
+            function pvPickMatch(i, ci) {
+                const s = window.__pv;
+                const it = s.items[s.idx];
+                pvMatch(i, ci < 0 ? '' : it.rc[ci]);  // pvMatch memanggil pvRender -> KaTeX ikut dirender ulang
             }
 
             function pvGo(i) {
