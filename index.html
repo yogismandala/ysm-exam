@@ -499,7 +499,18 @@
             // Inisialisasi Database
             if (typeof window.supabase !== 'undefined') {
                 if (!window.supabaseInstance) {
-                    window.supabaseInstance = window.supabase.createClient(MY_SUPABASE_URL, MY_SUPABASE_KEY);
+                    window.supabaseInstance = window.supabase.createClient(MY_SUPABASE_URL, MY_SUPABASE_KEY, {
+                        global: {
+                            // Setiap permintaan ke database membawa token sesi (header x-app-token);
+                            // database memakainya untuk memeriksa hak akses (RLS)
+                            fetch: (input, init = {}) => {
+                                const headers = new Headers(init.headers || ((typeof Request !== 'undefined' && input instanceof Request) ? input.headers : undefined));
+                                const t = sessionStorage.getItem('sessionToken') || localStorage.getItem('sessionToken');
+                                if (t) headers.set('x-app-token', t);
+                                return fetch(input, { ...init, headers });
+                            }
+                        }
+                    });
                 }
                 dbClient = window.supabaseInstance;
             } else {
@@ -540,7 +551,6 @@
                 sortBy: "time_desc" // Default: Waktu Terbaru
             };
             
-            // Load minimum waktu submit dari localStorage
             let hasSubmitted = false; // Status apakah siswa sudah submit ujian
             
             const SUBJECTS = [
@@ -1038,22 +1048,50 @@
                 return allRows;
             }
 
-            // agar soal ke-1001 dst tetap terbaca oleh aplikasi.
-            async function fetchAllQuestions(queryModifier = null) {
+            // Perpanjang masa berlaku sesi tiap 15 menit selama masih login
+            setInterval(async () => {
+                const t = getSessionToken();
+                if (!t || !dbClient) return;
+                try {
+                    const { data, error } = await dbClient.rpc('app_ping', { p_token: t });
+                    if (!error && data === false && currentUser && currentUser.role !== 'siswa') handleSessionExpired();
+                } catch (e) { /* abaikan */ }
+            }, 15 * 60 * 1000);
+
+            // Token sesi (dibuat saat login, lihat app_login)
+            function getSessionToken() {
+                return sessionStorage.getItem('sessionToken') || localStorage.getItem('sessionToken') || '';
+            }
+            function isSessionError(err) {
+                return !!err && /SESSION_INVALID/.test(String(err.message || err));
+            }
+            async function handleSessionExpired() {
+                if (window._sessionExpiredShown) return;
+                window._sessionExpiredShown = true;
+                if (typeof Swal !== 'undefined') {
+                    await Swal.fire({
+                        icon: 'warning',
+                        title: 'Sesi berakhir',
+                        text: 'Silakan login kembali.',
+                        confirmButtonText: 'OK',
+                        allowOutsideClick: false
+                    });
+                }
+                window._sessionExpiredShown = false;
+                if (typeof logout === 'function') logout(); else location.reload();
+            }
+
+            // Bank soal LENGKAP (dengan kunci jawaban) hanya untuk admin/guru, lewat fungsi database bertoken
+            async function fetchAllQuestions() {
                 const FETCH_SIZE = 1000;
                 let from = 0;
                 let allRows = [];
                 while (true) {
-                    let query = dbClient
-                        .from('questions')
-                        .select('*')
-                        .order('id', { ascending: true });
-
-                    if (queryModifier) {
-                        query = queryModifier(query);
-                    }
-
-                    const { data: pageData, error: pageError } = await query.range(from, from + FETCH_SIZE - 1);
+                    const { data: pageData, error: pageError } = await dbClient.rpc('app_get_questions', {
+                        p_token: getSessionToken(),
+                        p_from: from,
+                        p_limit: FETCH_SIZE
+                    });
 
                     if (pageError) throw pageError;
                     allRows = allRows.concat(pageData || []);
@@ -1070,18 +1108,17 @@
                     const userRole = currentUser ? currentUser.role : null;
 
                     // --- A. AMBIL DATA SOAL DARI SUPABASE ---
-                    let questionsData;
-                    try {
-                        questionsData = await fetchAllQuestions((query) => {
-                            if (userRole === 'siswa' && typeof currentExam !== 'undefined' && currentExam && currentExam.subject) {
-                                return query.eq('subject', currentExam.subject);
-                            }
-                            return query;
-                        });
-                    } catch (questionsError) {
-                        console.error("Error load questions:", questionsError);
-                        showToast('Gagal memuat soal', 'error');
-                        return false;
+                    // Siswa TIDAK mengunduh bank soal: soal ujiannya diambil lewat app_exam_start (tanpa kunci jawaban)
+                    let questionsData = [];
+                    if (userRole !== 'siswa') {
+                        try {
+                            questionsData = await fetchAllQuestions();
+                        } catch (questionsError) {
+                            console.error("Error load questions:", questionsError);
+                            if (isSessionError(questionsError)) { handleSessionExpired(); return false; }
+                            showToast('Gagal memuat soal', 'error');
+                            return false;
+                        }
                     }
                     // Map data soal untuk mengenkripsi jawaban (security_token)
                     allQuestions = (questionsData || []).map(q => {
@@ -1204,10 +1241,6 @@
             }
 
             // 2. BAGIAN ADMIN (MONITORING REALTIME SUPABASE)
-            // Variabel channel realtime admin
-            let realtimeChannel = null;
-            let realtimeLoginChannel = null;
-
             async function bukaMonitoring() {
                 // Cek Database
                 if (!dbClient) {
@@ -1241,11 +1274,8 @@
                 const panel = document.getElementById('monitorPanel');
                 if (panel) panel.classList.add('hidden');
 
-                // Matikan koneksi realtime supaya tidak terus menerima event di belakang layar
-                if (realtimeChannel) {
-                    dbClient.removeChannel(realtimeChannel);
-                    realtimeChannel = null;
-                }
+                // Hentikan polling supaya tidak terus mengambil data di belakang layar
+                hentikanPollingMonitoring();
                 resetMonitorQueue();
             }
 
@@ -1283,75 +1313,68 @@
                 monitorQueue.clear();
             }
 
-            // Fungsi Mengaktifkan Supabase Realtime
+            // Pemantauan memakai polling (bukan realtime) karena akses tabel kini dibatasi oleh token sesi
+            let monitorPollTimer = null;
+            const monitorLastSeen = new Map();
+
             function aktifkanRealtime() {
-                // Cegah koneksi ganda jika tombol diklik berkali-kali
-                if (realtimeChannel) return; 
-
+                if (monitorPollTimer) return;
                 const loadingText = document.getElementById('loadingText');
-                realtimeChannel = dbClient
-                    .channel('monitoring-ujian')
-                    .on(
-                        'postgres_changes',
-                        {
-                            event: '*', // Memantau INSERT (siswa baru login) dan UPDATE (siswa update soal/status)
-                            schema: 'public',
-                            table: 'monitoring' // Pastikan nama tabel Anda benar 'monitoring'
-                        },
-                        (payload) => {
-                            if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
-                                antrekanUpdateMonitor(payload.new); // masuk antrean, digambar per 1 detik
+                if (loadingText) {
+                    loadingText.innerText = "Monitoring Aktif 🟢 (diperbarui tiap 5 detik)";
+                    loadingText.style.color = "green";
+                }
+                const tick = async () => {
+                    if (document.hidden) return;
+                    try {
+                        const rows = await fetchAllRows('monitoring', '*', 'last_update');
+                        rows.forEach(r => {
+                            const sig = JSON.stringify(r);
+                            if (monitorLastSeen.get(r.id) !== sig) {
+                                monitorLastSeen.set(r.id, sig);
+                                antrekanUpdateMonitor(r); // hanya baris yang berubah yang digambar ulang
                             }
-                        }
-                    )
-                    .subscribe((status) => {
-                        if (status === 'SUBSCRIBED') {
-                            if (loadingText) {
-                                loadingText.innerText = "Monitoring Realtime Aktif 🟢";
-                                loadingText.style.color = "green";
-                            }
-                        }
-                    });
+                        });
+                    } catch (e) {
+                        console.error('Gagal memperbarui monitoring:', e.message || e);
+                    }
+                };
+                monitorPollTimer = setInterval(tick, 5000);
             }
-            function aktifkanRealtimeLogin() {
-                if (realtimeLoginChannel) return; 
-                realtimeLoginChannel = dbClient
-                    .channel('monitoring-status-login')
-                    .on(
-                        'postgres_changes',
-                        { event: 'UPDATE', schema: 'public', table: 'users' },
-                        (payload) => {
-                            const dataBaru = payload.new;
-                            
-                            // 1. Update data di memori
-                            if (typeof allUsers !== 'undefined' && allUsers) {
-                                const userIndex = allUsers.findIndex(u => u.username === dataBaru.username);
-                                if (userIndex !== -1) {
-                                    allUsers[userIndex].is_login = dataBaru.is_login;
-                                }
-                            }
+            function hentikanPollingMonitoring() {
+                if (monitorPollTimer) { clearInterval(monitorPollTimer); monitorPollTimer = null; }
+                monitorLastSeen.clear();
+            }
 
-                            // 2. Cari span berdasarkan USERNAME (Bukan ID)
+            let loginPollTimer = null;
+            function aktifkanRealtimeLogin() {
+                if (loginPollTimer) return;
+                const tick = async () => {
+                    if (document.hidden || !currentUser || currentUser.role !== 'admin') return;
+                    if (!document.getElementById('usersTableBody')) return; // hanya saat halaman Pengguna terbuka
+                    try {
+                        const rows = await fetchAllRows('users', 'id, username, is_login');
+                        let changed = false;
+                        rows.forEach(dataBaru => {
+                            const u = (typeof allUsers !== 'undefined' && allUsers) ? allUsers.find(x => x.username === dataBaru.username) : null;
+                            if (!u) return;
+                            const sedangLogin = dataBaru.is_login === true || String(dataBaru.is_login) === 'true';
+                            const lama = u.is_login === true || String(u.is_login) === 'true';
+                            if (sedangLogin === lama) return;
+                            u.is_login = dataBaru.is_login;
+                            changed = true;
                             const statusElement = document.getElementById(`status-login-${dataBaru.username}`);
-                            
-                            if (statusElement) {
-                                // Pastikan membaca boolean atau string dari Supabase dengan benar
-                                const sedangLogin = dataBaru.is_login === true || String(dataBaru.is_login) === 'true';
-                                
-                                                                if (typeof applyUserStatus === 'function') {
-                                    applyUserStatus(statusElement, sedangLogin);
-                                } else if (sedangLogin) {
-                                    statusElement.className = "text-red-500 font-bold text-sm";
-                                    statusElement.innerText = "🔴 Aktif (Sedang Ujian)";
-                                } else {
-                                    statusElement.className = "text-green-500 font-bold text-sm";
-                                    statusElement.innerText = "🟢 Offline";
-                                }
-                            }
-                            if (typeof updateUserStatCards === 'function') updateUserStatCards();
-                        }
-                    )
-                    .subscribe();
+                            if (statusElement && typeof applyUserStatus === 'function') applyUserStatus(statusElement, sedangLogin);
+                        });
+                        if (changed && typeof updateUserStatCards === 'function') updateUserStatCards();
+                    } catch (e) {
+                        console.error('Gagal memperbarui status login:', e.message || e);
+                    }
+                };
+                loginPollTimer = setInterval(tick, 5000);
+            }
+            function hentikanPollingLogin() {
+                if (loginPollTimer) { clearInterval(loginPollTimer); loginPollTimer = null; }
             }
 
             // Fungsi Fetch Data Awal (Tetap Dipertahankan untuk render pertama kali)
@@ -1360,7 +1383,7 @@
                     const data = await fetchAllRows('monitoring', '*', 'last_update');
                     data.reverse(); // supaya urutan kembali dari terbaru ke terlama
                     if (data) {
-                        data.forEach(siswa => updateBarisTabel(siswa, true));
+                        data.forEach(siswa => { monitorLastSeen.set(siswa.id, JSON.stringify(siswa)); updateBarisTabel(siswa, true); });
                         updateNomorUrut(); // 1x saja setelah semua baris masuk
                     }
                 } catch (error) {
@@ -1463,10 +1486,10 @@
                     const dataToSave = { ...userData };
                     delete dataToSave.action;
 
-                    // 2. Simpan ke Supabase (gunakan upsert agar bisa untuk Tambah & Edit)
+                    // 2. Simpan pengguna baru ke Supabase
                     const { error } = await dbClient
                         .from('users')
-                        .upsert([dataToSave]); 
+                        .insert([dataToSave]); 
 
                     if (error) {
                         console.error("Error saat aksi database Supabase:", error);
@@ -1559,25 +1582,24 @@
                 try {
                     for (let i = 0; i < retries; i++) {
                         try {
-                            // Siapkan data, hapus property 'action' karena Supabase tidak butuh itu
-                            const dataToSave = { ...examData };
-                            delete dataToSave.action;
+                            // Skor dihitung dan hasil disimpan oleh database (tidak bisa dipalsukan dari browser)
+                            const { data, error } = await dbClient.rpc('app_submit_exam', {
+                                p_token: getSessionToken(),
+                                p_subject: examData.exam_subject,
+                                p_answers: examData.answers,
+                                p_violations: examData.violations,
+                                p_exam_time: examData.exam_time,
+                                p_waktu_login: examData.waktu_login,
+                                p_waktu_selesai: examData.waktu_selesai,
+                                p_submit_type: examData.submit_type
+                            });
 
-                            // Pastikan format answers menjadi JSON string jika struktur kolom di Supabase diset 'text'
-                            if (typeof dataToSave.answers === 'object') {
-                                dataToSave.answers = JSON.stringify(dataToSave.answers);
+                            if (!error && data && data.ok) {
+                                return { score: Number(data.score) || 0 }; // Berhasil (skor dari database)
                             }
-
-                            // Proses Insert ke Supabase
-                            const { error } = await dbClient
-                                .from('examresult')
-                                .insert([dataToSave]);
-
-                            if (!error) {
-                                return true; // Berhasil terkirim (otomatis memicu blok finally di bawah)
-                            } else {
-                                console.error("Gagal simpan ke Supabase (Percobaan " + (i + 1) + "):", error);
-                            }
+                            console.error("Gagal simpan ke Supabase (Percobaan " + (i + 1) + "):", error || data);
+                            // Sesi tidak sah / tidak ada catatan pengerjaan: mengulang tidak akan membantu
+                            if (isSessionError(error) || (data && data.error === 'no_attempt')) break;
                             
                         } catch (error) {
                             console.error("Error saat mengirim nilai:", error);
@@ -1589,11 +1611,9 @@
                             await new Promise(resolve => setTimeout(resolve, waitTime));
                         }
                     }                
-                    return false; // Gagal total setelah semua percobaan (otomatis memicu blok finally di bawah)
+                    return false; // Gagal total setelah semua percobaan
 
                 } finally {
-                    // 2. Sembunyikan loading di sini. 
-                    // Blok ini PASTI jalan di akhir, tidak peduli fungsi ini keluar lewat 'return true' atau 'return false'.
                     hideLoading();
                 }
             }
@@ -1613,6 +1633,7 @@
                         headers: {
                             'apikey': MY_SUPABASE_KEY,
                             'Authorization': 'Bearer ' + MY_SUPABASE_KEY,
+                            'x-app-token': getSessionToken(),
                             'Content-Type': 'application/json',
                             'Prefer': 'return=minimal'
                         },
@@ -1700,14 +1721,26 @@
                     const savedDoubt = localStorage.getItem('doubtQuestions') || sessionStorage.getItem('doubtQuestions');
                     const savedIndex = localStorage.getItem('currentQuestionIndex') || sessionStorage.getItem('currentQuestionIndex');
                     const savedViolations = localStorage.getItem('violationCount') || sessionStorage.getItem('violationCount');
-                    // 2. VALIDASI KRUSIAL: Cek apakah mata pelajaran ini benar-benar punya soal
-                    const subjectQuestions = allQuestions.filter(q => q.subject === currentExam.subject);
             
                     if (savedAnswers) studentAnswers = JSON.parse(savedAnswers);
                     if (savedDoubt) doubtQuestions = new Set(JSON.parse(savedDoubt));
                     if (savedIndex) currentQuestionIndex = parseInt(savedIndex);
                     if (savedViolations) violationCount = parseInt(savedViolations);
-                    if (subjectQuestions.length === 0) {
+                    // 2. VALIDASI KRUSIAL: soal diambil dari server; cek apakah mata pelajaran ini benar-benar punya soal
+                    const restoredCount = await loadExamQuestions();
+                    if (restoredCount === -1) {
+                        if (!getSessionToken()) return; // sesi sudah ditangani handleSessionExpired
+                        await Swal.fire({
+                            icon: 'warning',
+                            title: 'Koneksi Bermasalah',
+                            text: 'Soal belum bisa dimuat. Jawaban Anda aman di perangkat ini. Pastikan internet aktif lalu coba lagi.',
+                            confirmButtonText: 'Coba Lagi',
+                            allowOutsideClick: false
+                        });
+                        location.reload();
+                        return;
+                    }
+                    if (restoredCount === 0) {
                         // Jika setelah refresh ternyata soal tidak ada/belum tersedia
                         await Swal.fire('Info', 'Maaf, soal untuk mata pelajaran ini belum tersedia.', 'warning');
 
@@ -1720,7 +1753,6 @@
                         return;
                     };     
             
-                    await loadExamQuestions();
                     if (typeof mulaiPelaporanSiswa === "function") mulaiPelaporanSiswa();
                     renderExamPage();
                 } else {
@@ -1892,77 +1924,30 @@
                 }
                 let user = null;
                 try {
-                    // --- PROSES LOGIN AMAN DAN SPESIFIK MENGGUNAKAN SUPABASE ---
-                    const { data: userData, error } = await dbClient
-                        .from('users')
-                        .select('*')
-                        .eq('username', username)
-                        .single();
-
-                    if (error || !userData) {
-                        if (typeof Swal !== 'undefined') Swal.close();
-                        showError('Username atau password salah!');
-                        return;
-                    }
-                    // Verifikasi password dengan hash ← TAMBAHKAN blok ini
-                    const { data: verified } = await dbClient.rpc('verify_password', {
-                        input_password: password,
-                        hashed_password: userData.password
+                    // --- LOGIN LEWAT FUNGSI DATABASE (password diperiksa di server, hash tidak dikirim ke browser) ---
+                    const { data: loginRes, error: loginErr } = await dbClient.rpc('app_login', {
+                        p_username: username,
+                        p_password: password
                     });
-                    if (!verified) {
+
+                    if (loginErr || !loginRes) {
                         if (typeof Swal !== 'undefined') Swal.close();
-                        showError('Username atau password salah!');
+                        console.error('Gagal memanggil app_login:', loginErr);
+                        showError('Gagal memproses login. Periksa koneksi internet Anda.');
                         return;
                     }
 
-                    // Akun yang dinonaktifkan admin tidak boleh login (admin tidak terpengaruh)
-                    if (userData.role !== 'admin' && userData.is_active === false) {
+                    if (!loginRes.ok) {
                         if (typeof Swal !== 'undefined') Swal.close();
-                        
-                        // Tentukan pesan berdasarkan role
-                        let errorMessage = 'Akun Anda dinonaktifkan. Silakan hubungi admin.'; // Default/Guru
-                        if (userData.role === 'siswa') {
-                            errorMessage = 'Ujian belum dimulai, silahkan tunggu.';
-                        }
-                        showError(errorMessage);
-                        return;
-                    }
 
-                    // --- LOGIKA TAMBAHAN: FITUR SINGLE LOGIN (KHUSUS SISWA) ---
-                    if (userData.role === 'siswa' && userData.is_login === true) {
-                        if (typeof Swal !== 'undefined') {
-                            Swal.fire({
-                                icon: 'warning',
-                                title: 'Akses Ditolak!',
-                                text: 'Akun Anda sedang aktif di perangkat lain! Silahkan logout dari perangkat sebelumnya atau hubungi guru.',
-                                confirmButtonText: 'Saya Mengerti',
-                                confirmButtonColor: '#ef4444', // Warna merah pro
-                                allowOutsideClick: false // Siswa tidak bisa menutup pesan dengan klik sembarang tempat
-                            });
-                        } else {
-                            // Cadangan jika SweetAlert gagal dimuat, tampilkan teks biasa selama 10 detik
-                            showError('Akun Anda sedang aktif di perangkat lain! Silahkan logout dari perangkat sebelumnya atau hubungi guru.', 10000);
-                        }
-                        return;
-                    }
-
-                    // Kunci login ATOMIK: hanya berhasil kalau is_login masih false
-                    if (userData.role === 'siswa') {
-                        const { data: locked, error: updateError } = await dbClient
-                            .from('users')
-                            .update({ is_login: true })
-                            .eq('username', username)
-                            .or('is_login.is.null,is_login.eq.false')
-                            .select('username');
-
-                        if (updateError) {
-                            if (typeof Swal !== 'undefined') Swal.close();
-                            console.error("Gagal memperbarui status login:", updateError);
-                            showError('Gagal memproses sesi login, silakan coba lagi.');
-                            return;
-                        }
-
-                        if (!locked || locked.length === 0) {
+                        if (loginRes.error === 'inactive') {
+                            // Tentukan pesan berdasarkan role
+                            let errorMessage = 'Akun Anda dinonaktifkan. Silakan hubungi admin.'; // Default/Guru
+                            if (loginRes.role === 'siswa') {
+                                errorMessage = 'Ujian belum dimulai, silahkan tunggu.';
+                            }
+                            showError(errorMessage);
+                        } else if (loginRes.error === 'already_login') {
                             if (typeof Swal !== 'undefined') {
                                 Swal.fire({
                                     icon: 'warning',
@@ -1973,16 +1958,20 @@
                                     allowOutsideClick: false
                                 });
                             } else {
-                                showError('Akun Anda sedang aktif di perangkat lain!', 10000);
+                                showError('Akun Anda sedang aktif di perangkat lain! Silahkan logout dari perangkat sebelumnya atau hubungi guru.', 10000);
                             }
-                            return;
+                        } else if (loginRes.error === 'locked') {
+                            showError('Terlalu banyak percobaan gagal. Coba lagi dalam 1 menit.');
+                        } else {
+                            showError('Username atau password salah!');
                         }
+                        return;
                     }
-                    // ====================================================================
 
-                    // Buang hash password sebelum disimpan ke localStorage / memori
-                    const { password: _drop, ...safeUser } = userData;
-                    user = safeUser;
+                    // Login berhasil: simpan token sesi dan data pengguna (tanpa password)
+                    sessionStorage.setItem('sessionToken', loginRes.token);
+                    localStorage.setItem('sessionToken', loginRes.token);
+                    user = loginRes.user;
 
                 } catch (error) {
                     if (typeof Swal !== 'undefined') Swal.close();
@@ -2316,23 +2305,27 @@
                 examSubmitted = false;
                 localStorage.removeItem('hasSubmitted');
 
-                // Filter soal yang sesuai dengan jenjang kelas dan mapel
-                const gradeLevel = user.class.charAt(0); 
-                const availableQuestions = allQuestions.filter(q => 
-                    q.question_class === gradeLevel && 
-                    q.subject === subject
-                );
+                // Soal diambil dari server (tanpa kunci jawaban), sesuai jenjang kelas dan mapel
+                const loadedCount = await loadExamQuestions();
 
-                if (availableQuestions.length === 0) {
+                if (loadedCount === -1) {
+                    // GAGAL MEMUAT SOAL (koneksi/sesi): kembali ke pilihan mapel
+                    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+                    if (typeof hideLoading === 'function') hideLoading();
+                    if (getSessionToken()) {
+                        await Swal.fire('Gagal', 'Soal belum bisa dimuat. Periksa koneksi internet lalu coba lagi.', 'error');
+                        renderPilihJadwalSiswa(user);
+                    }
+                    return;
+                }
+
+                if (loadedCount === 0) {
                     // JIKA SOAL KOSONG: Batalkan fullscreen
                     if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
                     if (typeof hideLoading === 'function') hideLoading();
                     if (typeof renderNoQuestionsPage === 'function') renderNoQuestionsPage();
                     return;
                 }
-
-                // Eksekusi Soal
-                await loadExamQuestions();
 
                 // Sisa eksekusi UI
                 if (typeof hideLoading === 'function') hideLoading();
@@ -2351,35 +2344,17 @@
 
             // EXAM FUNCTIONS
             async function loadExamQuestions() {
-                const gradeLevel = currentUser.class.charAt(0);
-
-                const pool = allQuestions.filter(q =>
-                    q.question_class === gradeLevel &&
-                    q.subject === currentExam.subject
-                );
-
-                // Urutan soal disimpan supaya SAMA setelah refresh
-                const orderKey = `order_${currentUser.username}_${currentExam.subject}`;
-                let questions = [];
-
-                let savedIds = null;
-                try { savedIds = JSON.parse(localStorage.getItem(orderKey) || 'null'); } catch (e) { savedIds = null; }
-
-                if (Array.isArray(savedIds) && savedIds.length > 0) {
-                    const byId = new Map(pool.map(q => [String(q.id), q]));
-                    questions = savedIds.map(id => byId.get(String(id))).filter(Boolean);
+                // Soal dipilih, diacak, dan dibatasi jumlahnya oleh server; urutan diingat server (aman saat refresh)
+                const { data: startRes, error: startErr } = await dbClient.rpc('app_exam_start', {
+                    p_token: getSessionToken(),
+                    p_subject: currentExam.subject
+                });
+                if (startErr || !startRes || !startRes.ok) {
+                    console.error('Gagal memuat soal ujian:', startErr || startRes);
+                    if (isSessionError(startErr)) { await handleSessionExpired(); }
+                    return -1;
                 }
-
-                if (questions.length === 0) {
-                    questions = [...pool];
-                    if (examSettings.shuffle_questions) {
-                        questions = shuffleArray(questions);
-                    }
-                    if (examSettings.max_questions > 0 && questions.length > examSettings.max_questions) {
-                        questions = questions.slice(0, examSettings.max_questions);
-                    }
-                    localStorage.setItem(orderKey, JSON.stringify(questions.map(q => q.id)));
-                }
+                const questions = Array.isArray(startRes.questions) ? startRes.questions : [];
 
                 examQuestions = questions.map(q => {
                     let options = [];
@@ -2411,6 +2386,7 @@
                 if (!remainingTime) {
                     remainingTime = examSettings.exam_duration * 60;
                 }
+                return examQuestions.length;
             }
 
             function shuffleArray(array) {
@@ -2831,7 +2807,7 @@
                     // Atur warna Merah
                     statusDiv.classList.remove('bg-green-500');
                     statusDiv.classList.add('bg-red-500', 'text-white');
-                    statusText.innerText = "🚫 Koneksi Terputus! Jangan Refresh Halaman🥹";
+                    statusText.innerText = "Koneksi Terputus! Jangan Refresh Halaman";
                 }
             }
 
@@ -3127,7 +3103,7 @@
                             </div>
                         </div>
                         <div class="flex justify-between items-center mb-4">
-                            <h3 class="exd-hide font-bold" style="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Soal ${currentQuestionIndex + 1} dari ${examQuestions.length}</h3>
+                            <h3 class="exd-hide font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 1.25}px; color: ${textColor};">Soal ${currentQuestionIndex + 1} dari ${examQuestions.length}</h3>
                             <span class="px-4 py-2 bg-[#d9ecd9] text-[#004d00] rounded-full font-semibold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">
                                 ${getQuestionTypeLabel(question.question_type)}
                             </span>
@@ -3797,25 +3773,23 @@
                 // Tampilkan loading
                 if (typeof showLoading === 'function') showLoading();
                 
-                // Tambahkan delay acak agar database tidak overload jika kumpul massal
-                if (!isAutoSubmit) {
-                    const randomDelay = Math.floor(Math.random() * 12000);
-                    await new Promise(resolve => setTimeout(resolve, randomDelay));
-                }
+                const submitMoment = new Date();
+                const answersSnapshot = typeof studentAnswers !== 'undefined' ? JSON.parse(JSON.stringify(studentAnswers)) : {};
+                const randomDelay = Math.floor(Math.random() * 12000);
+                await new Promise(resolve => setTimeout(resolve, randomDelay));
                 
                 // Siapkan data untuk dikirim ke database SEBELUM hapus apapun
-                const score = typeof calculateScore === 'function' ? calculateScore() : 0;
-                const answersString = typeof studentAnswers !== 'undefined' ? JSON.stringify(studentAnswers) : "{}";
+                let score = 0; // diisi dari database setelah hasil tersimpan
+                const answersToSend = answersSnapshot;
                 const waktuLoginSiswa = sessionStorage.getItem('waktuLogin') || localStorage.getItem('waktuLogin_' + currentUser.username + '_' + currentExam.subject) || "-";
-                const waktuSelesaiSiswa = sessionStorage.getItem('waktuSelesai') || new Date().toLocaleTimeString('id-ID');
+                const waktuSelesaiSiswa = sessionStorage.getItem('waktuSelesai') || submitMoment.toLocaleTimeString('id-ID');
 
                 const examData = {
                     student_name: currentUser.name,
                     student_class: currentUser.class,
                     exam_subject: currentExam.subject,
-                    exam_time: new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}),
-                    answers: answersString,
-                    final_score: score,
+                    exam_time: submitMoment.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit'}),
+                    answers: answersToSend,
                     violations: typeof violationCount !== 'undefined' ? violationCount : 0,
                     waktu_login: waktuLoginSiswa,
                     waktu_selesai: waktuSelesaiSiswa,
@@ -3828,7 +3802,9 @@
                 // Proses Simpan ke Database DULU sebelum hapus data lokal
                 let success = false;
                 if (typeof saveExamResultToSheet === 'function') {
-                    success = await saveExamResultToSheet(examData);
+                    const saved = await saveExamResultToSheet(examData);
+                    success = !!saved;
+                    if (saved) score = saved.score;
                 }
 
                 // Jika GAGAL: jangan hapus data, jangan kunci tombol, beri tahu siswa
@@ -3922,93 +3898,6 @@
                     try { return JSON.parse(s); } catch (e) { /* biarkan sebagai teks */ }
                 }
                 return s;
-            }
-
-            function calculateScore() {
-                let correctAnswers = 0;
-                let totalPoints = 0;
-                const perItem = !!examSettings.matching_per_item;
-                if (!examQuestions || examQuestions.length === 0) return 0;
-
-                examQuestions.forEach((question, idx) => {
-                    const rawStudent = studentAnswers[idx];
-                    let answerKey;
-
-                    // 1. Dekode dan Parsing Kunci Jawaban
-                    let decodedKey = '';
-                    try {
-                        decodedKey = decodeURIComponent(escape(atob(question.security_token || "")));
-                    } catch (e) {
-                        decodedKey = '';
-                    }
-                    answerKey = parseAnswerKey(decodedKey);
-                    totalPoints += (perItem && question.question_type === 'menjodohkan' && Array.isArray(answerKey)) ? answerKey.length : 1;
-
-                    // 2. Validasi: Jangan hitung jika siswa tidak menjawab
-                    if (rawStudent === undefined || rawStudent === null || rawStudent === "" || (Array.isArray(rawStudent) && rawStudent.length === 0)) {
-                        return;
-                    }
-
-                    // 3. Logika Perbandingan Per Tipe Soal
-                    const type = question.question_type;
-
-                    if (type === 'pilihan_ganda' || type === 'benar_salah' || type === 'isian_singkat') {
-                        // Bandingkan teks murni, abaikan spasi depan/belakang dan huruf besar/kecil
-                        const sAns = normalizeText(rawStudent).trim().toLowerCase();
-                        const kAns = normalizeText(answerKey).trim().toLowerCase();
-                        
-                        if (sAns === kAns) correctAnswers++;
-                    } 
-                    else if (type === 'pilihan_ganda_kompleks') {
-                        // 1. Pastikan jawaban siswa jadi Array, bersihkan HTML, dan urutkan
-                        let sArray = Array.isArray(rawStudent) ? rawStudent : [rawStudent];
-                        let sNormalized = sArray
-                            .map(item => normalizeText(item).trim().toUpperCase())
-                            .filter(item => item !== "") // Buang jika ada string kosong
-                            .sort();
-
-                        // 2. Pastikan kunci jawaban jadi Array, bersihkan HTML, dan urutkan
-                        let kArray = [];
-                        if (Array.isArray(answerKey)) {
-                            kArray = answerKey;
-                        } else {
-                            // Jika kunci berupa string "A,C" atau "A, C", pecah jadi array
-                            kArray = String(answerKey).split(',');
-                        }
-
-                        let kNormalized = kArray
-                        .map(item => {
-                            let trimmed = String(item).trim().toUpperCase();
-                            if (/^[A-Z]$/.test(trimmed) && Array.isArray(question.options)) {
-                                const optIdx = trimmed.charCodeAt(0) - 65; // A=0, B=1, C=2, D=3
-                                if (question.options[optIdx] !== undefined) {
-                                    return normalizeText(question.options[optIdx]).trim().toUpperCase();
-                                }
-                            }
-                            // Fallback: jika kunci sudah berupa teks lengkap (bukan huruf tunggal)
-                            return normalizeText(trimmed).trim().toUpperCase();
-                        })
-                        .filter(item => item !== "")
-                        .sort();
-
-                        // 3. Bandingkan isi array yang sudah jadi string murni
-                        const sFinal = sNormalized.join(',');
-                        const kFinal = kNormalized.join(',');
-
-                        if (sFinal !== "" && sFinal === kFinal) {
-                            correctAnswers++;
-                        }
-                    }
-                    else if (type === 'menjodohkan') {
-                        const kArr = Array.isArray(answerKey) ? answerKey : [];
-                        if (kArr.length === 0 || typeof rawStudent !== 'object') return;
-                        const benar = kArr.filter((k, i) =>
-                            normalizeText(rawStudent[i]).trim().toLowerCase() === normalizeText(k).trim().toLowerCase()).length;
-                        correctAnswers += perItem ? benar : benar / kArr.length;
-                    }
-                });
-
-                return totalPoints ? Math.round((correctAnswers / totalPoints) * 100) : 0;
             }
 
             function addMatchRow(l = '', r = '') {
@@ -4150,6 +4039,15 @@
                         console.error("Gagal keluar dari mode fullscreen:", err);
                     }
                 }
+                // Akhiri sesi di database (siswa: kunci login juga dilepas)
+                const sessionTokenNow = sessionStorage.getItem('sessionToken') || localStorage.getItem('sessionToken');
+                if (sessionTokenNow) {
+                    try {
+                        await dbClient.rpc('app_logout', { p_token: sessionTokenNow });
+                    } catch (err) {
+                        console.error('Gagal mengakhiri sesi di database:', err);
+                    }
+                }                
                 // --- TAMBAHAN: KEMBALIKAN STATUS LOGIN MENJADI FALSE (KHUSUS SISWA) ---
                 if (currentUser && currentUser.role === 'siswa') {
                     try {
@@ -4172,15 +4070,9 @@
                     pelaporanInterval = null;
                 }
                 document.removeEventListener('visibilitychange', laporKeAdmin);
-                if (realtimeChannel) {
-                    realtimeChannel.unsubscribe();
-                    realtimeChannel = null;
-                }
+                hentikanPollingMonitoring();
+                hentikanPollingLogin();
                 if (typeof resetMonitorQueue === 'function') resetMonitorQueue();
-                if (realtimeLoginChannel) {
-                    realtimeLoginChannel.unsubscribe();
-                    realtimeLoginChannel = null;
-                }
                 examSubmitted = false;
                 currentUser = null;
                 currentExam = null;
@@ -4275,7 +4167,7 @@
                                         </div>
                                         <div>
                                             <h2 class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">Admin Panel</h2>
-                                            <p class="text-xs opacity-80 style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</p>
+                                            <p class="text-xs opacity-80" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name}</p>
                                         </div>
                                     </div>
                                     
@@ -4407,7 +4299,7 @@
                                         </div>
                                         <div>
                                             <h2 class="font-bold text-sm md:text-base" style="font-family: ${customFont}, ${baseFontStack};">Guru Panel</h2>
-                                            <p class="text-xs opacity-80 style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name} - ${currentUser.subject}</p>
+                                            <p class="text-xs opacity-80" style="font-family: ${customFont}, ${baseFontStack};">${currentUser.name} - ${currentUser.subject}</p>
                                         </div>
                                     </div>
                                     
@@ -5070,7 +4962,7 @@
                 }
             }
 
-                        // ===== TAMPILAN PENGGUNA (tab terpisah: Siswa | Guru & Admin) =====
+            // ===== TAMPILAN PENGGUNA (tab terpisah: Siswa | Guru & Admin) =====
             if (typeof window.currentUserTab === 'undefined') window.currentUserTab = 'siswa'; // 'siswa' | 'staff'
             if (typeof window.currentUserClass === 'undefined') window.currentUserClass = '';
 
@@ -5766,9 +5658,9 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                 </div>
                                 <div class="flex items-center gap-2">
                                     <button onclick="showAddUserForm()" class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl text-white text-xs md:text-sm font-semibold hover:opacity-90 transition shadow flex items-center justify-center gap-2" style="background: linear-gradient(135deg, ${primaryColor}, ${secondary});">
-                                        <span>➕</span><span id="addUserBtnLabel">Tambah Siswa</span>
+                                        <span id="addUserBtnLabel">Tambah Siswa</span>
                                     </button>
-                                    <button onclick="refreshTarget('users')" title="Muat ulang data" class="px-3.5 py-2.5 rounded-xl bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 transition shadow-sm text-sm">⟳</button>
+                                    <button onclick="refreshTarget('users')" title="Muat ulang data" class="px-3.5 py-2.5 rounded-xl bg-white border border-gray-300 text-black-600 hover:bg-gray-50 transition shadow-sm text-sm">↻</button>
                                 </div>
                             </div>
 
@@ -5809,7 +5701,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                             <option value="online">🔴 Sedang Aktif</option>
                                             <option value="offline">🟢 Offline</option>
                                         </select>
-                                        <button onclick="resetAllOnlineUsers()" class="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition text-xs md:text-sm font-semibold whitespace-nowrap">🚨 Reset Semua Online</button>
+                                        <button onclick="resetAllOnlineUsers()" class="col-span-2 sm:col-span-1 px-3 py-2 rounded-xl bg-orange-50 text-orange-700 border border-orange-200 hover:bg-orange-100 transition text-xs md:text-sm font-semibold whitespace-nowrap">Reset Semua Online</button>
                                     </div>
 
                                     <select id="userAccountFilter" onchange="setUserAccountFilter(this.value)" class="${selCls} sm:w-auto">
@@ -5828,13 +5720,13 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                     </div>
                                     <div class="flex flex-wrap items-center gap-2">
                                         <span id="usersSelectedInfo" class="text-xs text-gray-500 mr-auto"></span>
-                                        ${bb('📤 Ekspor', 'showExportUsers()', 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')}
-                                        ${bb('📥 Impor', 'showImportUsers()', 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')}
-                                        ${bb('✏️ Ubah Kelas Terpilih', 'bulkEditUsers()', 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50', 'usersBulkEditBtn')}
-                                        ${bb('✅ Aktifkan', 'bulkSetActive(true)', 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50')}
-                                        ${bb('⛔ Nonaktifkan', 'bulkSetActive(false)', 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100')}
+                                        ${bb('Ekspor', 'showExportUsers()', 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')}
+                                        ${bb('Impor', 'showImportUsers()', 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50')}
+                                        ${bb('Ubah Kelas Terpilih', 'bulkEditUsers()', 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50', 'usersBulkEditBtn')}
+                                        ${bb('Aktifkan', 'bulkSetActive(true)', 'bg-white text-emerald-700 border-emerald-300 hover:bg-emerald-50')}
+                                        ${bb('Nonaktifkan', 'bulkSetActive(false)', 'bg-white text-gray-700 border-gray-300 hover:bg-gray-100')}
                                         ${bb('🔐 Hash', 'hashNewPasswords()', 'bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50')}
-                                        ${bb('🗑️ Hapus', 'bulkDeleteUsers()', 'bg-white text-red-600 border-red-200 hover:bg-red-50')}
+                                        ${bb('Hapus', 'bulkDeleteUsers()', 'bg-white text-red-600 border-red-200 hover:bg-red-50')}
                                     </div>
                                 </div>
 
@@ -5957,8 +5849,8 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                 </button>
                                 <span class="text-[11px] font-semibold ${act ? 'text-emerald-700' : 'text-gray-400'}">${act ? 'Aktif' : 'Nonaktif'}</span>
                            </div></td>`;
-                    const editBtn = `<button onclick="editUser('${user.id}')" class="${btnBase} bg-white text-sky-700 border-sky-200 hover:bg-sky-50" title="Ubah data pengguna">✏️ Ubah</button>`;
-                    const delBtn = `<button onclick="deleteUser('${user.id}')" class="${btnBase} bg-white text-red-600 border-red-200 hover:bg-red-50" title="Hapus pengguna">🗑️ Hapus</button>`;
+                    const editBtn = `<button onclick="editUser('${user.id}')" class="${btnBase} bg-white text-sky-700 border-sky-200 hover:bg-sky-50" title="Ubah data pengguna">Ubah</button>`;
+                    const delBtn = `<button onclick="deleteUser('${user.id}')" class="${btnBase} bg-white text-red-600 border-red-200 hover:bg-red-50" title="Hapus pengguna">Hapus</button>`;
                     const rowCls = `hover:bg-emerald-50/40 transition ${act ? '' : 'opacity-60'}`;
 
                     if (tab === 'siswa') {
@@ -5971,7 +5863,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                 ${accountCell}
                                 <td class="px-4 py-3"><div class="flex justify-end gap-1.5">
                                     ${editBtn}
-                                    <button data-u="${escHtml(user.username)}" onclick="resetSiswaLogin(this.dataset.u)" class="${btnBase} bg-white text-amber-700 border-amber-300 hover:bg-amber-50" title="Reset sesi login jika siswa terkunci">🔓 Reset</button>
+                                    <button data-u="${escHtml(user.username)}" onclick="resetSiswaLogin(this.dataset.u)" class="${btnBase} bg-white text-amber-700 border-amber-300 hover:bg-amber-50" title="Reset sesi login jika siswa terkunci">Reset</button>
                                     ${delBtn}
                                 </div></td>
                             </tr>`;
@@ -5983,7 +5875,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                             ${nameCell}
                             <td class="px-4 py-3">
                                 <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] md:text-xs font-semibold ${isAdminRole ? 'bg-violet-100 text-violet-800' : 'bg-emerald-100 text-emerald-800'}">
-                                    ${isAdminRole ? '👨‍💼 Admin' : '👨‍🏫 Guru'}
+                                    ${isAdminRole ? 'Admin' : 'Guru'}
                                 </span>
                             </td>
                             <td class="px-4 py-3">${isAdminRole ? '<span class="text-xs text-gray-300">—</span>' : guruSettingsHTML(user)}</td>
@@ -6209,11 +6101,11 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                     </select></label>
                                 <label class="block"><span class="block text-[11px] font-semibold text-gray-500 uppercase mb-1">Urutkan</span>
                                     <select id="filterSort" onchange="updateFilter('sortBy', this.value)" class="w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500" style="font-family: ${customFont}, ${baseFontStack};">
-                                        <option value="time_desc">🕒 Terkini</option>
-                                        <option value="score_desc">🏆 Nilai Tertinggi</option>
-                                        <option value="score_asc">📉 Nilai Terendah</option>
-                                        <option value="name_asc">🔤 Nama (A-Z)</option>
-                                        <option value="name_desc">🔠 Nama (Z-A)</option>
+                                        <option value="time_desc">Terkini</option>
+                                        <option value="score_desc">Nilai Tertinggi</option>
+                                        <option value="score_asc">Nilai Terendah</option>
+                                        <option value="name_asc">Nama (A-Z)</option>
+                                        <option value="name_desc">Nama (Z-A)</option>
                                     </select></label>
                             </div>
 
@@ -6223,7 +6115,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                 <button id="btnDeleteSelected" onclick="deleteSelectedResults()" disabled class="px-3 py-2 text-sm bg-orange-500 rounded-lg text-white font-semibold hover:bg-orange-600 transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">Hapus Terpilih (0)</button>
                                 <button onclick="deleteResultsByClass()" class="px-3 py-2 text-sm bg-orange-500 hover:bg-orange-600 rounded-lg text-white font-semibold transition shadow-sm">Hapus Per Kelas</button>
                                 <button onclick="clearAllResults()" class="px-3 py-2 text-sm bg-red-500 hover:bg-red-600 rounded-lg text-white font-semibold transition shadow-sm">Bersihkan Data</button>
-                                <button onclick="refreshTarget('examResults')" class="px-3 py-2 text-sm bg-gray-600 hover:bg-gray-700 rounded-lg text-white font-semibold transition shadow-sm">Refresh</button>
+                                <button onclick="refreshTarget('examResults')" class="px-3 py-2 text-sm bg-gray-600 hover:bg-gray-700 rounded-lg text-white font-semibold transition shadow-sm">↻</button>
                             </div>
                             
                             <div class="hidden md:block overflow-x-auto rounded-xl border border-gray-200">
@@ -6315,7 +6207,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                     </span>
                                 </td>
                                 <td class="p-3 whitespace-nowrap">
-                                    <button onclick="showResultDetail('${result.id}')" class="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-lg font-semibold hover:bg-blue-200 transition">🔍 Detail</button>
+                                    <button onclick="showResultDetail('${result.id}')" class="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-lg font-semibold hover:bg-blue-200 transition">Detail</button>
                                     <div class="text-[10px] text-gray-500 mt-1">${submitTypeLabel(result.submit_type)}</div>
                                 </td>
                             </tr>
@@ -6359,7 +6251,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                     </div>
                                     <div class="flex justify-between items-center">
                                         <span class="text-gray-500">${submitTypeLabel(result.submit_type)}</span>
-                                        <button onclick="showResultDetail('${result.id}')" class="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-lg font-semibold hover:bg-blue-200 transition">🔍 Detail</button>
+                                        <button onclick="showResultDetail('${result.id}')" class="px-3 py-1 text-xs bg-blue-100 text-blue-800 rounded-lg font-semibold hover:bg-blue-200 transition">Detail</button>
                                     </div>
                                 </div>
                             </div>
@@ -7110,7 +7002,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                             </div>
                             <input type="file" id="fileUploadSoalWord" accept=".docx" style="display: none;" onchange="handleUploadWord(event)">
                             <button onclick="showAddQuestionForm()" class="w-full flex justify-center items-center px-2 py-1 rounded-lg text-white font-semibold hover:opacity-90 transition text-sm whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">Tambah Soal</button>
-                            <button onclick="refreshTarget('questions')" class="col-span-2 sm:col-span-1 w-full flex justify-center items-center px-2 py-1 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">Refresh</button>
+                            <button onclick="refreshTarget('questions')" class="col-span-2 sm:col-span-1 w-full flex justify-center items-center px-2 py-1 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-sm whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">↻</button>
                             <input type="file" id="fileUploadSoal" accept=".xlsx, .xls" style="display: none;" onchange="handleUploadSoal(event)">
                         </div>
                     `;
@@ -7121,10 +7013,10 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                 <option value="">Semua Jenis Ujian</option>
                                 ${bankSoalTypeOptions()}
                             </select>
-                            <button onclick="downloadSoalWord()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-blue-700 rounded-lg text-white font-semibold hover:bg-blue-800 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm">📃 Download Word</button>
-                            <button onclick="triggerUploadWord()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm">📝 Upload Word</button>
-                            <button onclick="showGuruAddQuestionForm()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 rounded-lg text-white font-semibold hover:opacity-90 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">➕ Tambah Soal</button>
-                            <button onclick="refreshTarget('questions')" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">🔄 Refresh</button>
+                            <button onclick="downloadSoalWord()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-blue-700 rounded-lg text-white font-semibold hover:bg-blue-800 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm">Download Word</button>
+                            <button onclick="triggerUploadWord()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-sky-600 rounded-lg text-white font-semibold hover:bg-sky-700 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm">Upload Word</button>
+                            <button onclick="showGuruAddQuestionForm()" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 rounded-lg text-white font-semibold hover:opacity-90 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm" style="background-color: ${primaryColor}; font-family: ${customFont}, ${baseFontStack};">Tambah Soal</button>
+                            <button onclick="refreshTarget('questions')" class="flex items-center justify-center text-center px-1.5 py-2 sm:px-4 sm:py-2.5 bg-gray-600 rounded-lg text-white font-semibold hover:bg-gray-700 transition text-[11px] leading-tight sm:text-sm sm:whitespace-nowrap shadow-sm" style="font-family: ${customFont}, ${baseFontStack};">↻</button>
                             <input type="file" id="fileUploadSoalWord" accept=".docx" style="display: none;" onchange="handleUploadWord(event)">
                         </div>
                     `;
@@ -8514,7 +8406,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                             const { data, error } = await dbClient
                                 .from('questions')
                                 .insert([payload])
-                                .select();
+                                .select('id');
 
                             if (error) throw new Error(error.message);
 
@@ -11131,7 +11023,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                         <form id="settingsForm" class="space-y-4">
 
                             <div class="bg-white rounded-2xl shadow-custom p-4 md:p-6">
-                                <h3 class="font-bold text-base md:text-lg mb-4 flex items-center gap-2" style="color: ${textColor};">⏱️ Waktu & Jumlah Soal</h3>
+                                <h3 class="font-bold text-base md:text-lg mb-4 flex items-center gap-2" style="color: ${textColor};">Waktu & Jumlah Soal</h3>
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     ${numberField('settingDuration', 'Durasi Ujian', examSettings.exam_duration || 60, 1, 'menit', 'Lama waktu pengerjaan siswa.')}
                                     ${numberField('settingMinTime', 'Batas Minimal Kumpul', examSettings.minTimeToSubmit || 0, 0, 'menit', 'Siswa belum bisa mengumpulkan sebelum waktu ini lewat. Isi 0 jika tanpa batas.')}
@@ -11142,7 +11034,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                             </div>
 
                             <div class="bg-white rounded-2xl shadow-custom p-4 md:p-6">
-                                <h3 class="font-bold text-base md:text-lg mb-4 flex items-center gap-2" style="color: ${textColor};">🔀 Pengacakan</h3>
+                                <h3 class="font-bold text-base md:text-lg mb-4 flex items-center gap-2" style="color: ${textColor};">Pengacakan</h3>
                                 <div class="space-y-3">
                                     ${toggleRow('settingShuffle', examSettings.shuffle_questions, 'Acak Urutan Soal', 'Urutan soal berbeda untuk tiap siswa.')}
                                     ${toggleRow('settingShuffleAnswers', examSettings.shuffle_answers, 'Acak Urutan Jawaban', 'Urutan opsi jawaban diacak.')}
@@ -11150,7 +11042,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                             </div>
 
                             <div class="bg-white rounded-2xl shadow-custom p-4 md:p-6">
-                                <h3 class="font-bold text-base md:text-lg mb-4 flex items-center gap-2" style="color: ${textColor};">🛡️ Hasil & Akses</h3>
+                                <h3 class="font-bold text-base md:text-lg mb-4 flex items-center gap-2" style="color: ${textColor};">Hasil & Akses</h3>
                                 <div class="space-y-3">
                                     ${toggleRow('settingShowScore', examSettings.show_score, 'Tampilkan Nilai Setelah Ujian', 'Siswa langsung melihat nilainya setelah mengumpulkan.')}
                                     ${toggleRow('settingLimitOneAttempt', examSettings.limit_one_attempt, 'Batasi 1x Mengerjakan (Per Mapel)', 'Siswa yang sudah punya nilai tidak bisa masuk lagi ke mapel tersebut.')}
@@ -11297,7 +11189,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                             <button onclick="showAddScheduleForm()" 
                                 class="px-4 py-3 rounded-xl text-white font-semibold hover:opacity-90 transition shadow-lg"
                                 style="background: linear-gradient(135deg, ${primaryColor}, ${config.secondary_color || defaultConfig.secondary_color}); font-size: ${baseSize * 0.875}px;">
-                                ➕ Tambah Mapel
+                                Tambah Mapel
                             </button>
                         </div>
 
@@ -11418,7 +11310,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                             <label class="flex items-center cursor-pointer mb-2">
                                 <input type="checkbox" id="scheduleTokenEnabled" onchange="toggleAddTokenField()"
                                     class="w-5 h-5 text-[#006400] rounded">
-                                <span class="ml-3 text-gray-700 font-semibold">🔑 Wajibkan Token Masuk</span>
+                                <span class="ml-3 text-gray-700 font-semibold">Wajibkan Token Masuk</span>
                             </label>
                             <p class="text-xs text-gray-500 mb-2">Jika aktif, siswa harus memasukkan token yang benar untuk mapel ini.</p>
                             <div id="addTokenFieldWrapper" style="display: none;" class="flex gap-2">
