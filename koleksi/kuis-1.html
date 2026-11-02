@@ -385,12 +385,20 @@ button.opt:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
 <button class="sndbtn" id="btnSnd" type="button" aria-label="Suara hidup/mati">🔊</button>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>
 /* =====================================================
    PENGATURAN
    ===================================================== */
+const FB_CONFIG = { apiKey:'...', authDomain:'...', databaseURL:'https://kuis-1-fe9f2-default-rtdb.asia-southeast1.firebasedatabase.app/', projectId:'...', appId:'...' };
+firebase.initializeApp(FB_CONFIG);
+const auth = firebase.auth(), db = firebase.database();
+let _authP = null;
+function fbReady(){ return _authP || (_authP = auth.currentUser ? Promise.resolve() : auth.signInAnonymously()); }
 const ADMIN_PASSWORD = 'guru123';     // ← ganti sandi masuk guru di sini
-const PREFIX = 'kuiskelas-';          // awalan ID koneksi (jangan diubah di tengah pemakaian)
+//const PREFIX = 'kuiskelas-';          // awalan ID koneksi (jangan diubah di tengah pemakaian)
 const COLORS = ['#e21b3c','#1368ce','#d89e00','#26890c'];
 const SYM = ['▲','◆','●','■'];
 // untuk soal Benar/Salah: pilihan 0 = Benar (hijau, ✔), pilihan 1 = Salah (merah, ✖)
@@ -802,33 +810,52 @@ function hostStart(){
   show('s-hlobby'); renderLobby(); openPeer();
   window.onbeforeunload=()=>'Game sedang berjalan. Yakin keluar?';
 }
+
+H.conns = {}; H.base = ''; H.ready = false;
+
+function detachHost(){
+  if(H.inRef){ H.inRef.off(); H.inRef=null; }
+  if(H.presRef){ H.presRef.off(); H.presRef=null; }
+  H.conns = {}; H.ready = false;
+}
 function openPeer(){
-  if(H.peer){ try{H.peer.destroy();}catch(e){} }
-  if(typeof Peer==='undefined'){ $('hStatus').textContent='⚠ Pustaka koneksi (PeerJS) gagal dimuat. Periksa internet lalu muat ulang halaman.'; return; }
-  H.pin=String(Math.floor(100000+Math.random()*900000));
-  const peer=new Peer(PREFIX+H.pin); H.peer=peer;
-  peer.on('open',()=>{
-    $('hPin').textContent=H.pin; $('hLink').textContent=joinLink();
-    $('hStatus').textContent=''; renderLobby();
-  });
-  peer.on('connection',setupConn);
-  peer.on('error',e=>{
-    if(e.type==='unavailable-id'){openPeer();return;}
-    $('hStatus').textContent='⚠ Koneksi bermasalah ('+e.type+'). Periksa internet; jika berlanjut, muat ulang halaman.';
-  });
-  peer.on('disconnected',()=>{ try{peer.reconnect();}catch(e){} });
+  detachHost();
+  if(typeof firebase==='undefined'){ $('hStatus').textContent='⚠ Firebase gagal dimuat. Periksa internet.'; return; }
+  fbReady().then(()=>tryPin(0)).catch(e=>{ $('hStatus').textContent='⚠ Gagal membuat game ('+(e.code||e.message)+')'; });
 }
-function setupConn(conn){
-  conn.on('data',m=>onHostMsg(conn,m));
-  conn.on('close',()=>{
-    const p=conn._p;
-    if(p&&p.conn===conn){
-      if(H.phase==='lobby')H.players.delete(p.key); else p.connected=false;
-      updateHost();
-    }
+async function tryPin(n){
+  const pin = String(Math.floor(100000+Math.random()*900000));
+  const r = await db.ref('games/'+pin+'/meta').transaction(c => c===null ? {host:auth.currentUser.uid, created:Date.now()} : undefined);
+  if(!r.committed){ if(n<5) return tryPin(n+1); throw new Error('PIN penuh'); }
+  H.pin = pin; H.base = 'games/'+pin; H.ready = true;
+  H.qs.forEach((q,i)=>{ if(q.img) db.ref(H.base+'/img/'+i).set(q.img); });   // gambar ditulis SEKALI
+  H.inRef = db.ref(H.base+'/in');
+  H.inRef.on('child_added', s=>{
+    const v = s.val(); s.ref.remove();
+    if(v && v.pid && v.m) onHostMsg(getConn(v.pid), v.m);
   });
-  conn.on('error',()=>{});
+  H.presRef = db.ref(H.base+'/presence');
+  H.presRef.on('child_added',   s=>{ const c=H.conns[s.key]; if(c){ c.open=true; if(c._p){ c._p.connected=true; updateHost(); } } });
+  H.presRef.on('child_removed', s=>{ const c=H.conns[s.key]; if(c) connClosed(c); });
+  $('hPin').textContent = pin; $('hLink').textContent = joinLink(); $('hStatus').textContent=''; renderLobby();
 }
+function getConn(pid){
+  return H.conns[pid] || (H.conns[pid] = {
+    open:true, _p:null,
+    send(m){ db.ref(H.base+'/out/'+pid).push(m); },
+    close(){ this.open=false; }
+  });
+}
+function connClosed(conn){
+  conn.open = false;
+  const p = conn._p;
+  if(p && p.conn===conn){
+    if(H.phase==='lobby') H.players.delete(p.key); else p.connected=false;
+    updateHost();
+  }
+}
+function sendImages(p){}   // tidak dipakai lagi
+
 /* --- tim --- */
 function smallestTeam(){
   const n=H.cfg.nteams, c=new Array(n).fill(0);
@@ -862,7 +889,6 @@ $('btnShuffleTeams').onclick=shuffleTeams;
 function joinedMsg(p){
   return {t:'joined',name:p.name,mode:H.cfg.mode,teams:isTeam()?TEAMS.slice(0,H.cfg.nteams):[],team:p.team};
 }
-function sendImages(p){ H.qs.forEach((q,i)=>{ if(q.img)send(p.conn,{t:'img',i,d:q.img}); }); }
 
 function onHostMsg(conn,m){
   if(!m||typeof m!=='object')return;
@@ -946,7 +972,7 @@ function renderLobby(){
     if(!list.length)html+='<div class="muted">Menunggu siswa bergabung…</div>';
   }
   $('hPlayers').innerHTML=html;
-  $('btnStart').disabled=!list.some(p=>p.connected)||!H.peer||!H.peer.open;
+  $('btnStart').disabled=!list.some(p=>p.connected)||!H.ready;
 }
 $('hPlayers').addEventListener('click',e=>{
   const b=e.target.closest('.chip'); if(!b||H.phase!=='lobby')return;
@@ -1080,7 +1106,7 @@ $('btnCsv').onclick=()=>{
 $('btnAgain').onclick=()=>stopHost(true);
 function stopHost(toLib){
   clearInterval(H.tick);
-  if(H.peer){ try{H.peer.destroy();}catch(e){} H.peer=null; }
+  const b = H.base; detachHost(); if(b) db.ref(b).remove().catch(()=>{});
   H.players.clear(); H.phase='idle'; window.onbeforeunload=null;
   if(toLib)openLibrary(); else show('s-home');
 }
@@ -1094,38 +1120,38 @@ const P={peer:null,conn:null,name:'',pin:'',joined:false,ended:false,timer:null,
 function setErr(m){ $('joinErr').textContent=m; $('discErr').textContent=m; }
 function cleanupPlayer(){
   clearInterval(P.timer); clearTimeout(P.to);
-  if(P.peer){ try{P.peer.destroy();}catch(e){} }
-  P.peer=null;P.conn=null;
+  if(P.outRef){ P.outRef.off(); P.outRef=null; }
+  if(P.connRef){ P.connRef.off(); P.connRef=null; }
+  if(P.presRef){ P.presRef.remove().catch(()=>{}); P.presRef=null; }
+  P.conn = null;
 }
-function resetJoinBtn(){ $('btnJoin').disabled=false; $('btnJoin').textContent='Gabung'; }
-
 function playerJoin(){
   const pin=$('inPin').value.trim(), name=$('inName').value.trim();
   if(!/^\d{6}$/.test(pin)){setErr('PIN harus 6 angka.');return;}
   if(!name){setErr('Tulis namamu dulu.');return;}
-  if(typeof Peer==='undefined'){setErr('Pustaka koneksi gagal dimuat. Periksa internet lalu muat ulang halaman.');return;}
+  if(typeof firebase==='undefined'){setErr('Firebase gagal dimuat. Periksa internet.');return;}
   setErr(''); $('btnJoin').disabled=true; $('btnJoin').textContent='Menghubungkan…';
-  cleanupPlayer(); P.pin=pin;P.name=name;P.ended=false; P.imgs={};
+  cleanupPlayer(); P.pin=pin; P.name=name; P.ended=false; P.imgs={}; P.fetching={};
   const wasJoined=P.joined; P.joined=false;
-  const fail=msg=>{
-    cleanupPlayer(); resetJoinBtn(); setErr(msg);
-    if(wasJoined){ show('s-pdisc'); } else show('s-home');
-  };
+  const fail=msg=>{ cleanupPlayer(); resetJoinBtn(); setErr(msg); wasJoined?show('s-pdisc'):show('s-home'); };
   P.fail=fail;
-  const peer=new Peer(); P.peer=peer;
-  peer.on('open',()=>{
-    const conn=peer.connect(PREFIX+pin,{reliable:true}); P.conn=conn;
-    P.to=setTimeout(()=>{ if(!P.joined)fail('Tidak bisa terhubung. Periksa PIN dan koneksi internetmu.'); },12000);
-    conn.on('open',()=>conn.send({t:'join',name}));
-    conn.on('data',onPlayerMsg);
-    conn.on('close',()=>{ if(P.joined&&!P.ended){ clearInterval(P.timer); setErr(''); show('s-pdisc'); } });
-  });
-  peer.on('error',e=>{
-    if(P.joined)return;
-    if(e.type==='peer-unavailable')fail('PIN tidak ditemukan. Pastikan guru sudah membuat game.');
-    else fail('Gagal terhubung ('+e.type+'). Coba lagi.');
-  });
+  fbReady().then(async()=>{
+    const base='games/'+pin, uid=auth.currentUser.uid;
+    const meta=await db.ref(base+'/meta').once('value');
+    if(!meta.exists()) return fail('PIN tidak ditemukan. Pastikan guru sudah membuat game.');
+    P.base=base;
+    P.conn={open:true, send:m=>db.ref(base+'/in').push({pid:uid, m})};
+    P.presRef=db.ref(base+'/presence/'+uid);
+    P.connRef=db.ref('.info/connected');
+    P.connRef.on('value',s=>{ if(s.val()){ P.presRef.onDisconnect().remove(); P.presRef.set(true); } });
+    P.outRef=db.ref(base+'/out/'+uid);
+    P.outRef.on('child_added',s=>{ const m=s.val(); s.ref.remove(); onPlayerMsg(m); });
+    P.to=setTimeout(()=>{ if(!P.joined) fail('Guru tidak merespons. Periksa PIN dan koneksimu.'); },12000);
+    P.conn.send({t:'join',name});
+  }).catch(e=>fail('Gagal terhubung ('+(e.code||e.message)+').'));
 }
+
+function resetJoinBtn(){ $('btnJoin').disabled=false; $('btnJoin').textContent='Gabung'; }
 function renderWait(){
   $('pName').textContent=P.name;
   const box=$('pTeamBox');
@@ -1175,8 +1201,13 @@ function onPlayerMsg(m){
 function setQImg(){
   const box=$('pqImg');
   if(!P.hasImg){ box.innerHTML=''; return; }
-  const d=P.imgs[P.curQ];
-  box.innerHTML=d?`<img src="${d}" alt="">`:'<div class="muted imgph">Memuat gambar…</div>';
+  const i=P.curQ, d=P.imgs[i];
+  if(d){ box.innerHTML=`<img src="${d}" alt="">`; return; }
+  box.innerHTML='<div class="muted imgph">Memuat gambar…</div>';
+  if(P.fetching[i]) return; P.fetching[i]=true;
+  db.ref(P.base+'/img/'+i).once('value').then(s=>{
+    if(s.val()){ P.imgs[i]=s.val(); if(P.curQ===i) setQImg(); }
+  });
 }
 function showQuestion(m){
   P.answered=false; P.curQ=m.i; P.hasImg=!!m.hasImg;
