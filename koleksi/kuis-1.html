@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#46178f">
+<meta name="description" content="Kuis kelas interaktif real-time untuk guru dan siswa.">
 <title>Kuis Kelas Live</title>
 <style>
 :root{
@@ -177,6 +179,68 @@ button.opt:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
 .tfrow input{display:none}
 .tfrow span{display:block;text-align:center;padding:14px;border-radius:10px;font-weight:800;color:#fff;opacity:.35;border:3px solid transparent}
 .tfrow input:checked + span{opacity:1;border-color:#1d1d2b}
+
+/* =====================================================
+   PENYEMPURNAAN TAMPILAN
+   ===================================================== */
+:root{--r:14px;--shadow:0 10px 30px rgba(0,0,0,.28);--ring:0 0 0 3px rgba(255,210,63,.9)}
+html{color-scheme:dark;-webkit-text-size-adjust:100%}
+body{line-height:1.45;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+h1{font-size:clamp(1.35rem,3.4vw,1.9rem);letter-spacing:-.3px}
+.screen.active{animation:scrIn .22s ease-out both}
+@keyframes scrIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.logo{background:linear-gradient(90deg,#fff,#ffd23f);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-fill-color:transparent}
+.card,.qcard,.libcard,.board,.pinbox{box-shadow:var(--shadow)}
+.card{border-radius:18px}
+:where(button,a,input,select,textarea,summary):focus-visible{outline:none;box-shadow:var(--ring)}
+input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25)}
+.btn,.mini,.chip,.opt,.libcard{transition:transform .12s ease,filter .12s ease,box-shadow .12s ease,background-color .12s ease}
+@media(hover:hover){
+  .btn:not(:disabled):hover{filter:brightness(1.12)}
+  .btn.light:not(:disabled):hover{background:rgba(255,255,255,.28)}
+  .mini:hover{filter:brightness(.95)}
+  .chip:hover{transform:translateY(-1px)}
+  .libcard:hover{transform:translateY(-3px)}
+  button.opt:hover{filter:brightness(1.1)}
+}
+.btn.light{border:1px solid rgba(255,255,255,.22)}
+.libcard{border-radius:var(--r);border:1px solid rgba(0,0,0,.04)}
+.libcard h3{line-height:1.25}
+.badge{letter-spacing:.2px}
+.empty{border:1px dashed rgba(255,255,255,.35)}
+.qcard{border-radius:var(--r)}
+.qcard textarea{min-height:64px}
+.pill{backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.14)}
+.pinbox{border-radius:20px;padding:14px 34px}
+.pinbox .n{font-variant-numeric:tabular-nums;color:var(--bg1)}
+.linkline{border:1px solid rgba(255,255,255,.14);font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.88rem}
+.chip{box-shadow:0 2px 0 rgba(0,0,0,.18);animation:pop .2s ease-out both}
+@keyframes pop{from{transform:scale(.85);opacity:0}to{transform:none;opacity:1}}
+.tbox{border:1px solid rgba(255,255,255,.12)}
+.qtext{box-shadow:var(--shadow);line-height:1.25}
+.opt{border-radius:var(--r);line-height:1.2}
+.opt.win{box-shadow:0 0 0 5px #fff,0 8px 24px rgba(0,0,0,.35);outline:0}
+.timer{box-shadow:0 4px 14px rgba(0,0,0,.3);font-variant-numeric:tabular-nums}
+.progress{box-shadow:inset 0 1px 3px rgba(0,0,0,.3)}
+.row .sc{font-weight:800}
+.row:nth-child(even){background:rgba(70,23,143,.03)}
+.podium .bl{box-shadow:0 -4px 14px rgba(0,0,0,.18)}
+.statbox{border:1px solid rgba(255,255,255,.12)}
+.sndbtn{backdrop-filter:blur(4px);border:1px solid rgba(255,255,255,.2)}
+#toast{box-shadow:var(--shadow)}
+.netnote{display:none;background:#fff3cd;color:#664d03;border-radius:12px;padding:12px 16px;max-width:420px;width:100%;margin:0 0 14px;font-weight:600;font-size:.95rem;text-align:left}
+.netnote.on{display:block}
+.conn-off{display:none;position:fixed;top:0;left:0;right:0;z-index:98;background:#b0132b;color:#fff;text-align:center;padding:8px 12px;font-weight:700;font-size:.92rem}
+.conn-off.on{display:block}
+@media(max-width:560px){
+  .screen{padding:14px}
+  .btn.big{width:100%}
+  .libact .mini{flex:1}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
+}
 </style>
 </head>
 <body>
@@ -184,6 +248,7 @@ button.opt:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
 <!-- ============ BERANDA / GABUNG SISWA ============ -->
 <section id="s-home" class="screen center active">
   <div class="logo">🎮 Kuis Kelas Live</div>
+  <div class="netnote" id="netNote" role="alert"></div>
   <div class="card">
     <h2>Gabung Permainan</h2>
     <input type="text" id="inPin" inputmode="numeric" maxlength="6" placeholder="PIN Game" autocomplete="off">
@@ -381,24 +446,64 @@ button.opt:active{transform:translateY(3px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
   </div>
 </section>
 
+<div class="conn-off" id="connOff" role="status">📡 Koneksi terputus — mencoba menyambung ulang…</div>
 <div id="toast"></div>
 <button class="sndbtn" id="btnSnd" type="button" aria-label="Suara hidup/mati">🔊</button>
 
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<!-- Firebase (versi compat) -->
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-database-compat.js"></script>
 <script>
 /* =====================================================
-   PENGATURAN
+   DAFTAR ISI
+   1. Pengaturan & Firebase      6. Pengaturan game
+   2. Efek suara                 7. Guru / host (Firebase RTDB)
+   3. Penyimpanan kuis lokal     8. Siswa / player
+   4. Perpustakaan kuis          9. Navigasi awal
+   5. Editor kuis
    ===================================================== */
-const FB_CONFIG = { apiKey:'AIzaSyBiTJnwxCkNeGksBMqLzkRb-eBGUon558g', authDomain:'kuis-1-fe9f2.firebaseapp.com', databaseURL:'https://kuis-1-fe9f2-default-rtdb.asia-southeast1.firebasedatabase.app/', projectId:'kuis-1-fe9f2', appId:'1:285467273325:web:a28133289932504a2af764' };
-firebase.initializeApp(FB_CONFIG);
-const auth = firebase.auth(), db = firebase.database();
+
+/* =====================================================
+   1. PENGATURAN & FIREBASE
+   ===================================================== */
+// Sandi masuk guru. CATATAN: terbaca siapa pun lewat View Source, hanya penghalang kasual.
+const ADMIN_PASSWORD = 'guru123';
+
+const FB_CONFIG = {
+  apiKey: 'AIzaSyBiTJnwxCkNeGksBMqLzkRb-eBGUon558g',
+  authDomain: 'kuis-1-fe9f2.firebaseapp.com',
+  databaseURL: 'https://kuis-1-fe9f2-default-rtdb.asia-southeast1.firebasedatabase.app/',
+  projectId: 'kuis-1-fe9f2',
+  appId: '1:285467273325:web:a28133289932504a2af764'
+};
+
+// Aplikasi tetap berjalan (perpustakaan kuis guru) walau SDK Firebase gagal dimuat.
+let auth = null, db = null;
+if(typeof firebase !== 'undefined'){
+  try{ firebase.initializeApp(FB_CONFIG); auth = firebase.auth(); db = firebase.database(); }
+  catch(e){ console.error('Inisialisasi Firebase gagal:', e); }
+}
+const FB_OK = !!(auth && db);
+const FB_MSG = typeof firebase === 'undefined'
+  ? 'Firebase gagal dimuat. Periksa koneksi internet (atau coba jaringan lain) lalu muat ulang halaman.'
+  : 'Firebase belum siap. Periksa konfigurasi (FB_CONFIG) lalu muat ulang halaman.';
+
+// Menunggu sesi anonim dipulihkan dulu, baru membuat sesi baru bila memang belum ada.
+// Dengan begitu UID siswa/guru tetap sama setelah refresh.
 let _authP = null;
-function fbReady(){ return _authP || (_authP = auth.currentUser ? Promise.resolve() : auth.signInAnonymously()); }
-const ADMIN_PASSWORD = 'guru123';     // ← ganti sandi masuk guru di sini
-//const PREFIX = 'kuiskelas-';          // awalan ID koneksi (jangan diubah di tengah pemakaian)
+function fbReady(){
+  if(_authP) return _authP;
+  _authP = new Promise((res,rej)=>{
+    const un = auth.onAuthStateChanged(u=>{
+      un();
+      if(u) res();
+      else auth.signInAnonymously().then(()=>res()).catch(e=>{ _authP=null; rej(e); });
+    });
+  });
+  return _authP;
+}
+
 const COLORS = ['#e21b3c','#1368ce','#d89e00','#26890c'];
 const SYM = ['▲','◆','●','■'];
 // untuk soal Benar/Salah: pilihan 0 = Benar (hijau, ✔), pilihan 1 = Salah (merah, ✖)
@@ -459,7 +564,7 @@ function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   $(id).classList.add('active'); window.scrollTo(0,0);
 }
-function send(c,m){ try{ if(c && c.open) c.send(m); }catch(e){} }
+function send(c,m){ try{ if(c && c.open) c.send(m); }catch(e){ console.error(e); } }
 function clone(o){ return JSON.parse(JSON.stringify(o)); }
 function shuffle(a){ for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 let toastT;
@@ -474,7 +579,7 @@ function download(blob,name){
    PENYIMPANAN (IndexedDB, cadangan localStorage)
    ===================================================== */
 const Store=(function(){
-  let db=null, mode='idb';
+  let idb=null, mode='idb';
   const LSKEY='kuiskelas_lib2';
   function openIDB(){
     return new Promise((res,rej)=>{
@@ -486,14 +591,14 @@ const Store=(function(){
   }
   function tx(rw,fn){
     return new Promise((res,rej)=>{
-      const t=db.transaction('quizzes',rw); const s=t.objectStore('quizzes'); const r=fn(s);
+      const t=idb.transaction('quizzes',rw); const s=t.objectStore('quizzes'); const r=fn(s);
       t.oncomplete=()=>res(r?r.result:undefined); t.onerror=()=>rej(t.error); t.onabort=()=>rej(t.error);
     });
   }
   function lsRead(){ try{ const x=JSON.parse(localStorage.getItem(LSKEY)); return Array.isArray(x)?x:[]; }catch(e){ return []; } }
   function lsWrite(a){ localStorage.setItem(LSKEY,JSON.stringify(a)); }
   return {
-    async init(){ try{ db=await openIDB(); mode='idb'; }catch(e){ mode='ls'; } },
+    async init(){ try{ idb=await openIDB(); mode='idb'; }catch(e){ mode='ls'; } },
     async all(){ return mode==='idb'? ((await tx('readonly',s=>s.getAll()))||[]) : lsRead(); },
     async put(q){
       if(mode==='idb'){ await tx('readwrite',s=>s.put(q)); }
@@ -793,69 +898,87 @@ function prepare(qz,cfg){
 $('btnLaunch').onclick=()=>hostStart();
 
 /* =====================================================
-   GURU / HOST
+   GURU / HOST  (transportasi: Firebase Realtime Database)
+   Struktur data:
+     games/{pin}/meta            {host, created}
+     games/{pin}/in/{pushId}     {pid, m}     siswa → guru
+     games/{pin}/out/{pid}/{id}  pesan        guru → siswa
+     games/{pin}/presence/{pid}  true         penanda siswa online
+     games/{pin}/img/{index}     data URL gambar soal
    ===================================================== */
-const H={peer:null,pin:'',players:new Map(),qs:[],i:-1,phase:'idle',qStart:0,tick:null,counts:[],cfg:{mode:'solo',nteams:4,shuffle:false}};
+const H={sid:0,pin:'',base:'',ready:false,conns:{},inRef:null,presRef:null,
+  players:new Map(),qs:[],i:-1,phase:'idle',qStart:0,tick:null,counts:[],cfg:{mode:'solo',nteams:4,shuffle:false}};
 const isTeam=()=>H.cfg.mode!=='solo';
 function joinLink(){ return location.href.split('#')[0].split('?')[0]+'?pin='+H.pin; }
 
 function hostStart(){
+  if(!FB_OK||!auth||!db){ alert(FB_MSG); return; }
   const cfg=readSetup(); const p=prepare(playQuiz,cfg); if(p.error){alert(p.error);return;}
-  H.cfg=cfg; H.qs=p.questions; H.players.clear(); H.i=-1; H.phase='lobby';
+  H.cfg=cfg; H.qs=p.questions; H.players.clear(); H.i=-1; H.phase='lobby'; H.sid++;
   $('hTitle').textContent=playQuiz.title+(playQuiz.subject?' · '+playQuiz.subject:'');
   $('hMode').textContent=cfg.mode==='solo'?'👤 Individu':(cfg.mode==='auto'?'👥 '+cfg.nteams+' tim · acak':'🚩 '+cfg.nteams+' tim · pilih sendiri');
   $('btnShuffleTeams').style.display=isTeam()?'':'none';
   $('hPin').textContent='······'; $('hLink').textContent='…';
   $('hStatus').textContent='Menyiapkan game…';
-  show('s-hlobby'); renderLobby(); openPeer();
+  show('s-hlobby'); renderLobby(); openGame();
   window.onbeforeunload=()=>'Game sedang berjalan. Yakin keluar?';
 }
-
-H.conns = {}; H.base = ''; H.ready = false;
-
 function detachHost(){
-  if(H.inRef){ H.inRef.off(); H.inRef=null; }
-  if(H.presRef){ H.presRef.off(); H.presRef=null; }
-  H.conns = {}; H.ready = false;
+  if(H.inRef){ try{H.inRef.off();}catch(e){} H.inRef=null; }
+  if(H.presRef){ try{H.presRef.off();}catch(e){} H.presRef=null; }
+  H.conns={}; H.ready=false;
 }
-function openPeer(){
+function openGame(){
   detachHost();
-  if(typeof firebase==='undefined'){ $('hStatus').textContent='⚠ Firebase gagal dimuat. Periksa internet.'; return; }
-  fbReady().then(()=>tryPin(0)).catch(e=>{ $('hStatus').textContent='⚠ Gagal membuat game ('+(e.code||e.message)+')'; });
-}
-async function tryPin(n){
-  const pin = String(Math.floor(100000+Math.random()*900000));
-  const r = await db.ref('games/'+pin+'/meta').transaction(c => c===null ? {host:auth.currentUser.uid, created:Date.now()} : undefined);
-  if(!r.committed){ if(n<5) return tryPin(n+1); throw new Error('PIN penuh'); }
-  H.pin = pin; H.base = 'games/'+pin; H.ready = true;
-  H.qs.forEach((q,i)=>{ if(q.img) db.ref(H.base+'/img/'+i).set(q.img); });   // gambar ditulis SEKALI
-  H.inRef = db.ref(H.base+'/in');
-  H.inRef.on('child_added', s=>{
-    const v = s.val(); s.ref.remove();
-    if(v && v.pid && v.m) onHostMsg(getConn(v.pid), v.m);
+  const sid=H.sid;      // token sesi: membatalkan hasil async bila guru menekan "Batalkan"
+  fbReady().then(()=>tryPin(0,sid)).catch(e=>{
+    if(sid!==H.sid)return;
+    $('hStatus').textContent='⚠ Gagal membuat game ('+(e.code||e.message)+'). Periksa internet, konfigurasi Firebase, dan Rules.';
   });
-  H.presRef = db.ref(H.base+'/presence');
-  H.presRef.on('child_added',   s=>{ const c=H.conns[s.key]; if(c){ c.open=true; if(c._p){ c._p.connected=true; updateHost(); } } });
-  H.presRef.on('child_removed', s=>{ const c=H.conns[s.key]; if(c) connClosed(c); });
-  $('hPin').textContent = pin; $('hLink').textContent = joinLink(); $('hStatus').textContent=''; renderLobby();
+}
+async function tryPin(n,sid){
+  const pin=String(Math.floor(100000+Math.random()*900000));
+  const me=auth.currentUser.uid;
+  const r=await db.ref('games/'+pin+'/meta').transaction(c=>c===null?{host:me,created:Date.now()}:undefined);
+  if(!r.committed){ if(n<5) return tryPin(n+1,sid); throw new Error('Gagal mendapat PIN unik'); }
+  if(sid!==H.sid||H.phase==='idle'){ db.ref('games/'+pin).remove().catch(()=>{}); return; }   // dibatalkan saat menunggu
+  H.pin=pin; H.base='games/'+pin;
+  // gambar ditulis sekali; siswa mengambilnya sesuai kebutuhan
+  H.qs.forEach((q,i)=>{ if(q.img) db.ref(H.base+'/img/'+i).set(q.img).catch(e=>console.error('img',e)); });
+  H.inRef=db.ref(H.base+'/in');
+  H.inRef.on('child_added',s=>{
+    const v=s.val(); s.ref.remove().catch(()=>{});
+    if(v&&v.pid&&v.m&&typeof v.m==='object'){ const c=getConn(v.pid); c.open=true; onHostMsg(c,v.m); }
+  });
+  H.presRef=db.ref(H.base+'/presence');
+  H.presRef.on('child_added',s=>{
+    const c=H.conns[s.key]; if(!c)return;
+    c.open=true;
+    const p=c._p;
+    if(p){
+      if(H.phase==='lobby'&&H.players.get(p.key)!==p&&!H.players.has(p.key)) H.players.set(p.key,p);
+      if(H.players.get(p.key)===p){ p.connected=true; updateHost(); }
+    }
+  });
+  H.presRef.on('child_removed',s=>{ const c=H.conns[s.key]; if(c)connClosed(c); });
+  H.ready=true;
+  $('hPin').textContent=pin; $('hLink').textContent=joinLink(); $('hStatus').textContent=''; renderLobby();
 }
 function getConn(pid){
-  return H.conns[pid] || (H.conns[pid] = {
-    open:true, _p:null,
-    send(m){ db.ref(H.base+'/out/'+pid).push(m); },
+  return H.conns[pid]||(H.conns[pid]={
+    open:true,_p:null,
+    send(m){ db.ref(H.base+'/out/'+pid).push(m).catch(e=>console.error('send',e)); },
     close(){ this.open=false; }
   });
 }
 function connClosed(conn){
-  conn.open = false;
-  const p = conn._p;
-  if(p && p.conn===conn){
-    if(H.phase==='lobby') H.players.delete(p.key); else p.connected=false;
+  conn.open=false;
+  const p=conn._p;
+  if(p&&p.conn===conn&&H.players.get(p.key)===p){
+    if(H.phase==='lobby')H.players.delete(p.key); else p.connected=false;
     updateHost();
   }
 }
-function sendImages(p){}   // tidak dipakai lagi
-
 /* --- tim --- */
 function smallestTeam(){
   const n=H.cfg.nteams, c=new Array(n).fill(0);
@@ -908,7 +1031,7 @@ function onHostMsg(conn,m){
       H.players.set(key,p); Snd.join();
     }
     conn._p=p; send(conn,joinedMsg(p));
-    sendImages(p); syncPlayer(p); updateHost();
+    syncPlayer(p); updateHost();
   }else if(m.t==='team'){
     const p=conn._p; if(!p||H.phase!=='lobby'||H.cfg.mode!=='choose')return;
     const k=parseInt(m.k); if(!(k>=0&&k<H.cfg.nteams))return;
@@ -1101,12 +1224,15 @@ $('btnCsv').onclick=()=>{
     lines.push(''); lines.push('Peringkat Tim,Tim,Anggota,Rata-rata Skor');
     ts.forEach((t,i)=>lines.push([i+1,q(t.name),t.size,t.avg].join(',')));
   }
-  download(new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'hasil-'+fname(playQuiz&&playQuiz.title)+'.csv');
+  download(new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'}),'hasil-'+fname(playQuiz&&playQuiz.title)+'.csv');
 };
 $('btnAgain').onclick=()=>stopHost(true);
 function stopHost(toLib){
-  clearInterval(H.tick);
-  const b = H.base; detachHost(); if(b) db.ref(b).remove().catch(()=>{});
+  clearInterval(H.tick); H.sid++;
+  const b=H.base;
+  detachHost();
+  if(b&&db){ db.ref(b).remove().catch(e=>console.error('hapus game',e)); }
+  H.base=''; H.pin='';
   H.players.clear(); H.phase='idle'; window.onbeforeunload=null;
   if(toLib)openLibrary(); else show('s-home');
 }
@@ -1114,44 +1240,56 @@ function stopHost(toLib){
 /* =====================================================
    SISWA / PLAYER
    ===================================================== */
-const P={peer:null,conn:null,name:'',pin:'',joined:false,ended:false,timer:null,to:null,deadline:0,dur:0,answered:false,
+const P={conn:null,base:'',outRef:null,connRef:null,presRef:null,wasOff:false,fetching:{},
+  name:'',pin:'',joined:false,ended:false,timer:null,to:null,deadline:0,dur:0,answered:false,
   mode:'solo',teams:[],team:-1,imgs:{},curQ:-1,hasImg:false};
 
 function setErr(m){ $('joinErr').textContent=m; $('discErr').textContent=m; }
 function cleanupPlayer(){
   clearInterval(P.timer); clearTimeout(P.to);
-  if(P.outRef){ P.outRef.off(); P.outRef=null; }
-  if(P.connRef){ P.connRef.off(); P.connRef=null; }
-  if(P.presRef){ P.presRef.remove().catch(()=>{}); P.presRef=null; }
-  P.conn = null;
+  if(P.outRef){ try{P.outRef.off();}catch(e){} P.outRef=null; }
+  if(P.connRef){ try{P.connRef.off();}catch(e){} P.connRef=null; }
+  if(P.presRef){ try{P.presRef.remove().catch(()=>{});}catch(e){} P.presRef=null; }
+  P.conn=null; P.wasOff=false; $('connOff').classList.remove('on');
 }
+function resetJoinBtn(){ $('btnJoin').disabled=false; $('btnJoin').textContent='Gabung'; }
+
 function playerJoin(){
   const pin=$('inPin').value.trim(), name=$('inName').value.trim();
   if(!/^\d{6}$/.test(pin)){setErr('PIN harus 6 angka.');return;}
   if(!name){setErr('Tulis namamu dulu.');return;}
-  if(typeof firebase==='undefined'){setErr('Firebase gagal dimuat. Periksa internet.');return;}
+  if(!FB_OK||!auth||!db){setErr(FB_MSG);return;}
   setErr(''); $('btnJoin').disabled=true; $('btnJoin').textContent='Menghubungkan…';
-  cleanupPlayer(); P.pin=pin; P.name=name; P.ended=false; P.imgs={}; P.fetching={};
+  cleanupPlayer(); P.pin=pin;P.name=name;P.ended=false; P.imgs={}; P.fetching={};
   const wasJoined=P.joined; P.joined=false;
-  const fail=msg=>{ cleanupPlayer(); resetJoinBtn(); setErr(msg); wasJoined?show('s-pdisc'):show('s-home'); };
+  const fail=msg=>{
+    cleanupPlayer(); resetJoinBtn(); setErr(msg);
+    if(wasJoined){ show('s-pdisc'); } else show('s-home');
+  };
   P.fail=fail;
   fbReady().then(async()=>{
-    const base='games/'+pin, uid=auth.currentUser.uid;
+    const base='games/'+pin, me=auth.currentUser.uid;
     const meta=await db.ref(base+'/meta').once('value');
-    if(!meta.exists()) return fail('PIN tidak ditemukan. Pastikan guru sudah membuat game.');
+    if(!meta.exists()){ fail('PIN tidak ditemukan. Pastikan guru sudah membuat game.'); return; }
     P.base=base;
-    P.conn={open:true, send:m=>db.ref(base+'/in').push({pid:uid, m})};
-    P.presRef=db.ref(base+'/presence/'+uid);
+    P.conn={open:true,send:m=>db.ref(base+'/in').push({pid:me,m}).catch(e=>console.error('send',e))};
+    P.presRef=db.ref(base+'/presence/'+me);
     P.connRef=db.ref('.info/connected');
-    P.connRef.on('value',s=>{ if(s.val()){ P.presRef.onDisconnect().remove(); P.presRef.set(true); } });
-    P.outRef=db.ref(base+'/out/'+uid);
-    P.outRef.on('child_added',s=>{ const m=s.val(); s.ref.remove(); onPlayerMsg(m); });
-    P.to=setTimeout(()=>{ if(!P.joined) fail('Guru tidak merespons. Periksa PIN dan koneksimu.'); },12000);
+    P.connRef.on('value',s=>{
+      if(s.val()){
+        P.presRef.onDisconnect().remove();
+        P.presRef.set(true);
+        if(P.wasOff){ P.wasOff=false; $('connOff').classList.remove('on'); toast('Tersambung kembali.'); }
+      }else if(P.joined&&!P.ended){
+        P.wasOff=true; $('connOff').classList.add('on');
+      }
+    });
+    P.outRef=db.ref(base+'/out/'+me);
+    P.outRef.on('child_added',s=>{ const m=s.val(); s.ref.remove().catch(()=>{}); onPlayerMsg(m); });
+    P.to=setTimeout(()=>{ if(!P.joined)fail('Guru tidak merespons. Periksa PIN dan koneksimu.'); },12000);
     P.conn.send({t:'join',name});
   }).catch(e=>fail('Gagal terhubung ('+(e.code||e.message)+').'));
 }
-
-function resetJoinBtn(){ $('btnJoin').disabled=false; $('btnJoin').textContent='Gabung'; }
 function renderWait(){
   $('pName').textContent=P.name;
   const box=$('pTeamBox');
@@ -1183,10 +1321,6 @@ function onPlayerMsg(m){
       break;
     case 'team':
       P.team=m.k; renderWait(); setTeamPill(); break;
-    case 'img':
-      P.imgs[m.i]=m.d;
-      if(P.curQ===m.i&&P.hasImg&&$('s-pq').classList.contains('active'))setQImg();
-      break;
     case 'error':
       if(P.fail)P.fail(m.msg||'Tidak bisa bergabung.'); break;
     case 'kick':
@@ -1204,15 +1338,16 @@ function setQImg(){
   const i=P.curQ, d=P.imgs[i];
   if(d){ box.innerHTML=`<img src="${d}" alt="">`; return; }
   box.innerHTML='<div class="muted imgph">Memuat gambar…</div>';
-  if(P.fetching[i]) return; P.fetching[i]=true;
+  if(P.fetching[i]||!P.base)return; P.fetching[i]=true;
   db.ref(P.base+'/img/'+i).once('value').then(s=>{
-    if(s.val()){ P.imgs[i]=s.val(); if(P.curQ===i) setQImg(); }
-  });
+    if(s.val()){ P.imgs[i]=s.val(); if(P.curQ===i&&$('s-pq').classList.contains('active'))setQImg(); }
+    else P.fetching[i]=false;
+  }).catch(()=>{ P.fetching[i]=false; });
 }
 function showQuestion(m){
   P.answered=false; P.curQ=m.i; P.hasImg=!!m.hasImg;
   $('pqNo').textContent='Soal '+(m.i+1)+'/'+m.total;
-  $('pqText').textContent=m.q; $('pqText').style.display=m.q?'':'none';
+  $('pqText').textContent=m.q||''; $('pqText').style.display=m.q?'':'none';
   setQImg(); setTeamPill();
   $('pqOpts').className='opts'+(m.tf?' tf':'');
   $('pqOpts').innerHTML=m.opts.map((o,k)=>`<button class="opt ${optC(k,m.tf)}" data-k="${k}"><span class="sy">${optS(k,m.tf)}</span><span class="tx">${esc(o)}</span></button>`).join('');
@@ -1293,6 +1428,7 @@ async function ensureStore(){
   }
   return storeReady;
 }
+if(!FB_OK){ const n=$('netNote'); n.textContent='⚠ '+FB_MSG; n.classList.add('on'); }
 $('linkGuru').onclick=async()=>{
   const pw=prompt('Masukkan sandi guru:');
   if(pw===null)return;
