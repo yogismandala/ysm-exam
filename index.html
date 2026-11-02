@@ -1767,6 +1767,71 @@
             }
 
             // LOGIN PAGE
+            // Diganti sesuai nama file tujuan di repositori GitHub yang sama (alamat relatif).
+            const GUEST_PAGE_URL = 'koleksi/kuis-1.html';
+            const GUEST_BUTTON_LABEL = 'GUEST';
+
+            // Status tombol disimpan di settings.jadwal sebagai { kind: 'guest_button', is_active: true/false }
+            function isGuestButtonActive() {
+                return (examSettings.active_subjects || []).some(i => i && i.kind === 'guest_button' && i.is_active === true);
+            }
+            function guestButtonHTML() {
+                const on = isGuestButtonActive();
+                return `<button type="button" id="guestBtn" onclick="guestButtonClick()" ${on ? '' : 'disabled'} title="${on ? 'Masuk sebagai tamu' : 'Belum tersedia'}"
+                    class="absolute top-3 right-4 z-20 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-widest border transition ${on ? 'border-white/30 text-white/60 bg-white/10 hover:bg-white/25 hover:text-white cursor-pointer' : 'border-white/15 text-white/30 bg-white/5 cursor-not-allowed'}">${GUEST_BUTTON_LABEL}</button>`;
+            }
+            // Saat diklik: cek status TERBARU di database (halaman bisa sudah lama terbuka), lalu pindah halaman
+            async function guestButtonClick() {
+                let aktif = isGuestButtonActive();
+                try {
+                    const { data, error } = await dbClient.from('settings').select('jadwal').eq('id', 1).single();
+                    if (!error && data) {
+                        let j = data.jadwal;
+                        if (typeof j === 'string') { try { j = JSON.parse(j); } catch (e) { j = []; } }
+                        aktif = Array.isArray(j) && j.some(i => i && i.kind === 'guest_button' && i.is_active === true);
+                    }
+                } catch (e) { /* pakai status terakhir yang diketahui */ }
+                if (!aktif) {
+                    const b = document.getElementById('guestBtn');
+                    if (b) { b.disabled = true; b.title = 'Belum tersedia'; b.className = b.className.replace(/hover:\S+|cursor-pointer/g, '') + ' cursor-not-allowed opacity-50'; }
+                    if (typeof showToast === 'function') showToast('Tombol ini sedang dinonaktifkan', 'error');
+                    return;
+                }
+                window.location.href = GUEST_PAGE_URL;
+            }
+            // Dashboard admin: saklar aktif/nonaktif
+            function guestSwitchHTML() {
+                const on = isGuestButtonActive();
+                return `<button type="button" role="switch" aria-checked="${on}" onclick="toggleGuestButton(${!on})" title="${on ? 'Nonaktifkan' : 'Aktifkan'} tombol ${GUEST_BUTTON_LABEL}"
+                    class="relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors ${on ? 'bg-green-500' : 'bg-gray-300'}">
+                    <span class="inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}"></span>
+                </button>`;
+            }
+            async function toggleGuestButton(newStatus) {
+                const list = examSettings.active_subjects;
+                let item = list.find(i => i && i.kind === 'guest_button');
+                const created = !item;
+                const oldStatus = item ? item.is_active : false;
+                if (created) { item = { kind: 'guest_button', is_active: newStatus }; list.push(item); }
+                else item.is_active = newStatus;
+                try {
+                    showLoading();
+                    const { error } = await dbClient.from('settings').update({ jadwal: list }).eq('id', 1);
+                    if (error) throw error;
+                    showToast(`Tombol ${GUEST_BUTTON_LABEL} ${newStatus ? 'diaktifkan' : 'dinonaktifkan'}!`, 'success');
+                } catch (error) {
+                    console.error('Gagal mengubah tombol GUEST:', error);
+                    showToast('Gagal mengubah pengaturan tombol!', 'error');
+                    if (created) list.splice(list.indexOf(item), 1); else item.is_active = oldStatus;
+                } finally {
+                    hideLoading();
+                    const box = document.getElementById('guestSwitchBox');
+                    if (box) box.innerHTML = guestSwitchHTML();
+                    const st = document.getElementById('guestSwitchState');
+                    if (st) st.textContent = isGuestButtonActive() ? 'Aktif' : 'Nonaktif';
+                }
+            }
+
             function renderLoginPage() {
                 const { config, customFont, baseFontStack, baseSize, primaryColor, textColor } = RC;
                 
@@ -1807,6 +1872,7 @@
                                 <img src="https://i.ibb.co.com/pjPcR7fC/Kom.png" alt="Logo" class="w-12 h-12 drop-shadow-lg object-contain">
                             </div>
                             <div class="glass-panel p-8 shadow-2xl relative z-10" style="box-shadow: inset 0 0 0 2px #FFFFFF, 0 25px 50px -12px rgba(0,0,0,0.25); outline: 0.5px solid #006400; outline-offset: -5px;">
+                                ${guestButtonHTML()}
                                 <div class="text-center mb-8">
                                     <h1 class="font-bold mb-2.5 relative -top-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2.1}px; color: #FFFFFF;">Selamat Datang</h1>
                                     <p class="mb-3 relative -top-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.910}px; color: #FFFFFF;">Silahkan Login menggunakan NISN Anda</p>
@@ -5247,6 +5313,13 @@
                 
                 document.getElementById('adminContent').innerHTML = `
                     <div class="space-y-4">
+                        <div class="bg-white rounded-xl shadow-sm border border-gray-100 px-3 py-2 flex items-center justify-between gap-3">
+                            <div class="min-w-0">
+                                <p class="text-sm font-bold text-gray-700" style="font-family: ${customFont}, ${baseFontStack};">Tombol ${GUEST_BUTTON_LABEL} di halaman login</p>
+                                <p class="text-[11px] text-gray-400">Status: <b id="guestSwitchState">${isGuestButtonActive() ? 'Aktif' : 'Nonaktif'}</b>. Jika aktif, tombol di kanan atas kotak login bisa diklik dan membuka <span class="font-mono">${GUEST_PAGE_URL}</span>.</p>
+                            </div>
+                            <div id="guestSwitchBox">${guestSwitchHTML()}</div>
+                        </div>
                         
                     <div class="flex flex-col sm:flex-row gap-4">
                         <div class="w-full sm:w-1/4 shrink-0 flex flex-col gap-2">
