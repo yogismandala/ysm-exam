@@ -241,6 +241,72 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important}
 }
+
+/* =====================================================
+   TIPE SOAL BARU: puzzle, jajak pendapat, awan kata, slider
+   ===================================================== */
+.numb{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;background:var(--bg1);flex:none;margin-bottom:8px}
+.slgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.slgrid label{font-size:.85rem;font-weight:700;color:var(--muted);display:block}
+.slgrid input{margin:4px 0 0}
+@media(max-width:560px){.slgrid{grid-template-columns:1fr 1fr}}
+.hextra{margin-top:14px}
+.hextra .statbox{display:block}
+.xwrap{width:min(560px,100%);margin:0 auto;display:grid;gap:10px}
+.pz-slots{display:grid;gap:8px;min-height:64px;padding:10px;border:2px dashed rgba(255,255,255,.45);border-radius:14px;align-content:start}
+.pz-slots:empty::before{content:"Ketuk item di bawah untuk menyusun urutan";color:rgba(255,255,255,.65);font-weight:600;text-align:center;padding:12px 4px}
+.pz-pool{display:grid;gap:8px}
+.pz-item{border:0;border-radius:12px;padding:14px 16px;font-size:1.1rem;font-weight:700;color:#fff;text-align:left;display:flex;gap:12px;align-items:center;cursor:pointer;font-family:inherit;box-shadow:0 4px 0 rgba(0,0,0,.25);word-break:break-word}
+.pz-item:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.pz-item:disabled{opacity:.55;cursor:default}
+.pz-item .no{background:rgba(0,0,0,.25);border-radius:8px;min-width:32px;height:32px;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.slp,.cloudin{background:#fff;color:var(--ink);border-radius:16px;padding:20px}
+.slp .big{font-size:2.8rem;font-weight:900;text-align:center;color:var(--bg1);font-variant-numeric:tabular-nums}
+.slp input[type=range]{width:100%;margin:16px 0 4px;accent-color:var(--bg1);height:40px;padding:0;border:0;background:none;box-shadow:none}
+.slp .mm{display:flex;justify-content:space-between;color:var(--muted);font-weight:700;margin-bottom:14px}
+.cloudin label{font-weight:800;display:block;margin-bottom:8px}
+.cloud{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;align-items:center;min-height:200px;padding:18px;background:rgba(255,255,255,.1);border-radius:16px}
+.cw{border:0;background:none;font-family:inherit;font-weight:800;cursor:pointer;line-height:1.1;padding:2px 4px;color:#fff;border-radius:8px}
+.cw:hover{background:rgba(255,255,255,.14)}
+.slchart{background:#fff;color:var(--ink);border-radius:14px;padding:16px 22px 12px}
+.slplot{position:relative;height:190px;margin-top:6px}
+.slaxis{position:absolute;left:0;right:0;bottom:0;height:4px;background:#cfcfe0;border-radius:2px}
+.slband{position:absolute;top:0;bottom:0;background:rgba(38,137,12,.16);border-radius:6px}
+.slans{position:absolute;top:0;bottom:0;width:4px;margin-left:-2px;background:var(--ok);border-radius:2px}
+.slans b{position:absolute;top:-4px;left:50%;transform:translate(-50%,-100%);background:var(--ok);color:#fff;border-radius:8px;padding:2px 10px;white-space:nowrap;font-size:.95rem}
+.slbar{position:absolute;bottom:4px;width:14px;margin-left:-7px;background:var(--c1);border-radius:7px 7px 0 0;min-height:10px}
+.slmm{display:flex;justify-content:space-between;color:var(--muted);font-weight:700;margin-top:8px}
+
+/* ----- papan skor antar soal ----- */
+.sboard{position:relative;max-width:760px;height:calc(5*68px);margin:0 auto;overflow:hidden}
+.srow{position:absolute;left:0;right:0;height:60px;background:#fff;color:var(--ink);border-radius:12px;display:flex;align-items:center;gap:12px;padding:0 16px;font-weight:800;font-size:1.25rem;box-shadow:0 4px 14px rgba(0,0,0,.22);transition:top .9s cubic-bezier(.3,.8,.3,1),background-color .4s}
+.srow.top1{background:#fff3c4}
+.srow .rk{width:1.6em;color:var(--muted);text-align:center;flex:none}
+.srow .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow .gain{color:var(--ok);font-size:.95rem;flex:none;opacity:0;transition:opacity .4s}
+.srow.go .gain{opacity:1}
+.srow .mv{width:3.4em;text-align:right;font-size:.95rem;flex:none}
+.srow .mv.up{color:var(--ok)}.srow .mv.dn{color:var(--bad)}
+.srow .sc{min-width:4.6em;text-align:right;font-variant-numeric:tabular-nums;flex:none}
+.ovtwrap{max-width:760px;margin:0 auto 12px;display:grid;gap:8px}
+.ovt{background:rgba(255,210,63,.18);border:1px solid rgba(255,210,63,.55);border-radius:12px;padding:10px 14px;font-weight:700;text-align:center;opacity:0;transform:translateY(-6px);transition:opacity .5s,transform .5s}
+.ovt.in{opacity:1;transform:none}
+@media(max-width:560px){.srow{font-size:1.05rem;gap:8px;padding:0 10px}.srow .gain{display:none}}
+
+/* ----- karakter pemain & podium ----- */
+.av{display:inline-block;font-size:1.25em;line-height:1;margin-right:.3em;vertical-align:-.1em}
+.avbig{font-size:4.5rem;line-height:1;width:112px;height:112px;border-radius:50%;background:#fff;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;box-shadow:var(--shadow)}
+.avgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;width:min(400px,92vw)}
+.avgrid button{font-size:1.7rem;line-height:1;border:3px solid transparent;border-radius:12px;background:rgba(255,255,255,.14);padding:8px 0;cursor:pointer;font-family:inherit;transition:transform .12s,background-color .12s}
+.avgrid button.sel{border-color:#ffd23f;background:rgba(255,255,255,.3);transform:scale(1.08)}
+.podium{min-height:340px}
+.pod{opacity:0;animation:podIn .7s cubic-bezier(.2,.8,.2,1) forwards}
+.pod.p3{animation-delay:.3s}.pod.p2{animation-delay:1.3s}.pod.p1{animation-delay:2.5s}
+@keyframes podIn{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:none}}
+.pod .pav{font-size:3.4rem;line-height:1;margin-bottom:4px}
+.pod.p1 .pav{font-size:4.4rem}
+.pod .pav.sm{font-size:1.6rem;line-height:1.2;word-break:break-all}
+@media(prefers-reduced-motion:reduce){.pod{animation-delay:0s!important}}
 </style>
 </head>
 <body>
@@ -293,7 +359,7 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
         <input type="text" id="qSubject" maxlength="40" list="subjList" placeholder="mis. Matematika" style="margin-top:6px"></div>
     </div>
     <datalist id="subjList"></datalist>
-    <p class="hint">Isi 2–4 pilihan jawaban (yang dikosongkan tidak ditampilkan). Klik kotak berwarna untuk menandai jawaban benar. Gambar bersifat opsional.</p>
+    <p class="hint">Pilih tipe tiap soal: pilihan ganda, benar/salah, urutkan (puzzle), jajak pendapat, awan kata, atau slider. Pada pilihan ganda, kolom yang dikosongkan tidak ditampilkan dan kotak berwarna menandai jawaban benar. Gambar bersifat opsional.</p>
   </div>
   <div id="qList"></div>
   <div class="bar">
@@ -323,7 +389,7 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
       <p class="hint" style="margin:-4px 0 12px">Skor tim = rata-rata skor anggotanya, jadi adil walau jumlah anggota berbeda.</p>
     </div>
     <label class="chk"><input type="checkbox" id="suShuffle"> Acak urutan soal</label>
-    <label class="chk"><input type="checkbox" id="suShuffleOpts"> Acak urutan pilihan jawaban (soal pilihan ganda)</label>
+    <label class="chk"><input type="checkbox" id="suShuffleOpts"> Acak urutan pilihan jawaban (pilihan ganda &amp; jajak pendapat)</label>
   </div>
   <div style="text-align:right"><button class="btn green big" id="btnLaunch">Buat Game ▶</button></div>
 </section>
@@ -361,17 +427,30 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
   <div class="qtext" id="hQText"></div>
   <div class="qimg" id="hQImg"></div>
   <div class="opts" id="hOpts"></div>
+  <div class="hextra" id="hQExtra"></div>
 </section>
 
 <!-- ============ HASIL SOAL (GURU) ============ -->
 <section id="s-hr" class="screen">
   <div class="topbar">
     <span class="pill" id="hRNo"></span>
-    <span style="display:flex;gap:8px"><button class="btn green" id="btnNext">Soal Berikutnya ▶</button><button class="btn light sm" id="btnEnd2">Akhiri</button></span>
+    <span style="display:flex;gap:8px"><button class="btn green" id="btnNext">Papan Skor ▶</button><button class="btn light sm" id="btnEnd2">Akhiri</button></span>
   </div>
   <div class="qtext" id="hRText"></div>
   <div class="opts" id="hROpts"></div>
-  <div class="board" id="hRBoard"></div>
+  <div class="hextra" id="hRExtra"></div>
+</section>
+
+<!-- ============ PAPAN SKOR ANTAR SOAL (GURU) ============ -->
+<section id="s-hs" class="screen">
+  <div class="topbar">
+    <span class="pill" id="hsNo"></span>
+    <span style="display:flex;gap:8px"><button class="btn green" id="btnNext2">Soal Berikutnya ▶</button><button class="btn light sm" id="btnEnd3">Akhiri</button></span>
+  </div>
+  <h1 style="text-align:center;margin:6px 0 14px">🏅 Papan Skor</h1>
+  <div id="hsTeams"></div>
+  <div class="ovtwrap" id="hsOvt"></div>
+  <div class="sboard" id="hsBoard"></div>
 </section>
 
 <!-- ============ HASIL AKHIR (GURU) ============ -->
@@ -390,6 +469,7 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
   <div class="pcenter">
     <div class="bigmsg">Kamu sudah masuk! ✅</div>
     <div class="statbox" id="pName"></div>
+    <div id="pAvBox"></div>
     <div id="pTeamBox"></div>
     <div class="muted">Menunggu guru memulai permainan…</div>
     <div class="spinner"></div>
@@ -405,6 +485,7 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
   <div class="qtext" id="pqText" style="font-size:clamp(1.1rem,4vw,1.6rem);padding:16px"></div>
   <div class="qimg" id="pqImg"></div>
   <div class="opts" id="pqOpts"></div>
+  <div id="pqExtra"></div>
 </section>
 
 <section id="s-pans" class="screen">
@@ -422,12 +503,14 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
     <div class="statbox" id="prScore"></div>
     <div class="statbox" id="prRank"></div>
     <div class="statbox" id="prTeam" style="display:none"></div>
+    <div class="statbox" id="prInfo" style="display:none"></div>
     <div id="prStreak" style="font-weight:700"></div>
   </div>
 </section>
 
 <section id="s-pend" class="screen">
   <div class="pcenter">
+    <div class="avbig" id="peAv"></div>
     <div class="bigmsg">Permainan selesai 🎉</div>
     <div class="pts" id="peRank"></div>
     <div class="statbox" id="peScore"></div>
@@ -509,6 +592,11 @@ const SYM = ['▲','◆','●','■'];
 // untuk soal Benar/Salah: pilihan 0 = Benar (hijau, ✔), pilihan 1 = Salah (merah, ✖)
 const optC = (k,tf) => tf ? (k===0?'c3':'c0') : 'c'+k;
 const optS = (k,tf) => tf ? (k===0?'✔':'✖') : SYM[k];
+const QTYPES = ['mc','tf','puzzle','poll','cloud','slider'];
+const TYPE_LABEL = {mc:'Pilihan ganda',tf:'Benar / Salah',puzzle:'Urutkan',poll:'Jajak pendapat',cloud:'Awan kata',slider:'Slider'};
+const isScored = q => q.ty==='mc'||q.ty==='tf'||q.ty==='puzzle'||q.ty==='slider';   // poll & awan kata tidak bernilai
+const AV = ['🦊','🐼','🐯','🦁','🐸','🐵','🐙','🦄','🐲','🐧','🦉','🐨','🐰','🐻','🐢','🐬','🦋','🐝','🦀','🐳','🦈','🦒','🐱'];   // karakter pemain
+const CW_COLORS = ['#ffd23f','#ffffff','#ff8fa3','#7dd3fc','#86efac','#fdba74'];
 const TEAMS = [
   {n:'Merah',c:'#e21b3c'},{n:'Biru',c:'#1368ce'},{n:'Kuning',c:'#d89e00'},
   {n:'Hijau',c:'#26890c'},{n:'Ungu',c:'#7b3fb5'},{n:'Oranye',c:'#e8710a'}
@@ -560,6 +648,7 @@ const Snd=(function(){
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt = n => Number(n).toLocaleString('id-ID');
+const fmtN = n => Number(n).toLocaleString('id-ID',{maximumFractionDigits:4});
 function show(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
   $(id).classList.add('active'); window.scrollTo(0,0);
@@ -615,22 +704,29 @@ const Store=(function(){
    MODEL KUIS
    ===================================================== */
 function uid(){ return 'k'+Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
+function defaultSl(){ return {min:0,max:100,step:1,correct:50,margin:5,unit:''}; }
+function normSl(x){
+  const d=defaultSl(); x=x||{};
+  const num=(v,def)=>{ const n=Number(v); return (v===''||v===null||v===undefined||!Number.isFinite(n))?def:n; };
+  return {min:num(x.min,d.min),max:num(x.max,d.max),step:num(x.step,d.step),correct:num(x.correct,d.correct),
+    margin:Math.max(0,num(x.margin,d.margin)),unit:String(x.unit||'').slice(0,12)};
+}
 function normQ(q){
   q=q||{};
   const opts=(Array.isArray(q.opts)?q.opts:[]).slice(0,4).map(x=>String(x==null?'':x)); while(opts.length<4)opts.push('');
   let c=parseInt(q.correct); if(!(c>=0&&c<4))c=0;
   let t=parseInt(q.time); if(!(t>=5&&t<=120))t=20;
   const img=(typeof q.img==='string'&&q.img.indexOf('data:image/')===0)?q.img:'';
-  const type=(q.type==='tf')?'tf':'mc';
+  const type=QTYPES.includes(q.type)?q.type:'mc';
   const tfAnswer=(parseInt(q.tfAnswer)===1)?1:0;   // 0 = Benar, 1 = Salah
-  return {q:String(q.q||''),opts,correct:c,time:t,img,type,tfAnswer};
+  return {q:String(q.q||''),opts,correct:c,time:t,img,type,tfAnswer,sl:normSl(q.sl)};
 }
 function normQuiz(x){
   const now=Date.now();
   return {id:uid(),title:String(x.title||'Kuis tanpa judul').slice(0,80),subject:String(x.subject||'').slice(0,40),
     questions:(Array.isArray(x.questions)?x.questions:[]).map(normQ),created:now,updated:now};
 }
-function blankQ(){ return {q:'',opts:['','','',''],correct:0,time:20,img:'',type:'mc',tfAnswer:0}; }
+function blankQ(){ return {q:'',opts:['','','',''],correct:0,time:20,img:'',type:'mc',tfAnswer:0,sl:defaultSl()}; }
 function sampleQuizzes(){
   return [
     {title:'Dasar Informatika',subject:'Informatika',questions:[
@@ -774,20 +870,36 @@ function imgBoxHtml(q){
     : `<label class="mini upl">🖼 Tambah gambar<input type="file" accept="image/*" data-img hidden></label>`;
 }
 function qCardHtml(q,i){
+  const ty=QTYPES.includes(q.type)?q.type:'mc';
   const times=[10,15,20,30,45,60,90,120].map(t=>`<option value="${t}" ${q.time===t?'selected':''}>${t} detik</option>`).join('');
-  return `<div class="qhead"><b>Soal ${i+1}</b><span style="display:flex;gap:8px;align-items:center">
-      <select data-f="type"><option value="mc" ${q.type!=='tf'?'selected':''}>Pilihan ganda</option><option value="tf" ${q.type==='tf'?'selected':''}>Benar / Salah</option></select>
+  const typeOpts=QTYPES.map(k=>`<option value="${k}" ${ty===k?'selected':''}>${TYPE_LABEL[k]}</option>`).join('');
+  const optRows=(mk)=>q.opts.map((o,k)=>`<div class="orow">${mk(k)}<input type="text" data-o="${k}" value="${esc(o)}" placeholder="${ty==='puzzle'?'Item':'Pilihan'} ${k+1}${k>1?' (opsional)':''}"></div>`).join('');
+  let body='';
+  if(ty==='tf'){
+    body=`<div class="tfrow"><label><input type="radio" name="tf${i}" data-tf="0" ${q.tfAnswer===0?'checked':''}><span style="background:#26890c">✔ Benar</span></label>
+         <label><input type="radio" name="tf${i}" data-tf="1" ${q.tfAnswer===1?'checked':''}><span style="background:#e21b3c">✖ Salah</span></label></div>
+         <p class="hint">Pilih jawaban yang benar untuk pernyataan di atas.</p>`;
+  }else if(ty==='puzzle'){
+    body=`<p class="hint" style="margin:0 0 8px">Tulis item dalam <b>URUTAN YANG BENAR</b> (atas → bawah). Siswa akan melihatnya teracak dan harus menyusunnya. Minimal 2 item; kolom kosong diabaikan.</p>`+
+      optRows(k=>`<span class="numb">${k+1}</span>`);
+  }else if(ty==='poll'){
+    body=`<p class="hint" style="margin:0 0 8px">Jajak pendapat: tidak ada jawaban benar dan tidak ada poin. Hasilnya ditampilkan sebagai jumlah pilihan.</p>`+
+      optRows(k=>`<span class="numb" style="background:${COLORS[k]}">${SYM[k]}</span>`);
+  }else if(ty==='cloud'){
+    body=`<p class="hint">Siswa mengetik 1–3 kata singkat (maks 24 karakter). Kata yang sama digabung menjadi satu, makin sering muncul makin besar. Tanpa jawaban benar dan tanpa poin. Guru dapat menyembunyikan kata yang tidak pantas dengan mengkliknya di layar guru.</p>`;
+  }else if(ty==='slider'){
+    const s=q.sl||defaultSl();
+    const f=(k,l,type)=>`<div><label>${l}<input type="${type||'number'}" ${type?'maxlength="12"':'step="any"'} data-sl="${k}" value="${esc(s[k])}"></label></div>`;
+    body=`<div class="slgrid">${f('min','Min')}${f('max','Maks')}${f('step','Langkah')}${f('correct','Jawaban benar')}${f('margin','Toleransi (±)')}${f('unit','Satuan (opsional)','text')}</div>
+      <p class="hint">Siswa menggeser slider lalu mengunci jawaban. Jawaban dalam rentang toleransi dianggap benar; makin dekat ke nilai benar, makin tinggi poinnya. Toleransi 0 berarti harus tepat.</p>`;
+  }else{
+    body=optRows(k=>`<label class="rad"><input type="radio" name="c${i}" data-k="${k}" ${q.correct===k?'checked':''}><span style="background:${COLORS[k]}">${SYM[k]}</span></label>`);
+  }
+  return `<div class="qhead"><b>Soal ${i+1}</b><span style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end">
+      <select data-f="type">${typeOpts}</select>
       <select data-f="time">${times}</select><button class="mini danger del" type="button">Hapus</button></span></div>
     <textarea data-f="q" rows="2" placeholder="Tulis pertanyaan di sini">${esc(q.q)}</textarea>
-    <div class="imgbox">${imgBoxHtml(q)}</div>`+
-    (q.type==='tf'
-      ? `<div class="tfrow"><label><input type="radio" name="tf${i}" data-tf="0" ${q.tfAnswer===0?'checked':''}><span style="background:#26890c">✔ Benar</span></label>
-         <label><input type="radio" name="tf${i}" data-tf="1" ${q.tfAnswer===1?'checked':''}><span style="background:#e21b3c">✖ Salah</span></label></div>
-         <p class="hint">Pilih jawaban yang benar untuk pernyataan di atas.</p>`
-      : q.opts.map((o,k)=>
-      `<div class="orow"><label class="rad"><input type="radio" name="c${i}" data-k="${k}" ${q.correct===k?'checked':''}>
-        <span style="background:${COLORS[k]}">${SYM[k]}</span></label>
-        <input type="text" data-o="${k}" value="${esc(o)}" placeholder="Pilihan ${k+1}${k>1?' (opsional)':''}"></div>`).join(''));
+    <div class="imgbox">${imgBoxHtml(q)}</div>`+body;
 }
 function renderEditor(){
   $('qTitle').value=cur.title; $('qSubject').value=cur.subject||'';
@@ -799,7 +911,7 @@ function renderEditor(){
   });
 }
 function openEditor(q,isNew){
-  cur=q; cur._touched=!isNew; // kuis baru baru disimpan setelah diubah
+  cur=q; cur.questions.forEach(x=>{ if(!x.sl)x.sl=defaultSl(); }); cur._touched=!isNew; // kuis baru baru disimpan setelah diubah
   setSaveState(isNew?'Belum disimpan':'✓ Tersimpan'); renderEditor(); show('s-edit');
 }
 $('qList').addEventListener('input',e=>{
@@ -810,7 +922,14 @@ $('qList').addEventListener('input',e=>{
   else if(t.dataset.o!==undefined)q.opts[+t.dataset.o]=t.value;
   else if(t.dataset.k!==undefined)q.correct=+t.dataset.k;
   else if(t.dataset.tf!==undefined)q.tfAnswer=+t.dataset.tf;
-  else if(t.dataset.f==='type'){ q.type=(t.value==='tf')?'tf':'mc'; card.innerHTML=qCardHtml(q,+card.dataset.i); }
+  else if(t.dataset.sl!==undefined){
+    const key=t.dataset.sl; q.sl=q.sl||defaultSl();
+    q.sl[key]=(key==='unit')?t.value:(t.value===''?'':Number(t.value));
+  }
+  else if(t.dataset.f==='type'){
+    q.type=QTYPES.includes(t.value)?t.value:'mc'; if(!q.sl)q.sl=defaultSl();
+    card.innerHTML=qCardHtml(q,+card.dataset.i);
+  }
   else return;
   touchEdit();
 });
@@ -875,21 +994,42 @@ function readSetup(){
 }
 function prepare(qz,cfg){
   const out=[];
+  const lbl=q=>'Soal "'+(q.q.trim().slice(0,40)||'(bergambar)')+'"';
   for(const q of qz.questions){
     if(!q.q.trim()&&!q.img)continue;
-    if(q.type==='tf'){
-      out.push({q:q.q.trim(),opts:['Benar','Salah'],correct:q.tfAnswer===1?1:0,time:q.time||20,img:q.img||'',tf:true});
+    const ty=QTYPES.includes(q.type)?q.type:'mc';
+    const base={q:q.q.trim(),time:q.time||20,img:q.img||'',ty,tf:ty==='tf'};
+    if(ty==='tf'){ out.push(Object.assign(base,{opts:['Benar','Salah'],correct:q.tfAnswer===1?1:0})); continue; }
+    if(ty==='cloud'){ out.push(Object.assign(base,{opts:[],correct:-1})); continue; }
+    if(ty==='slider'){
+      const s=q.sl||{}; const raw=[s.min,s.max,s.step,s.correct];
+      const mn=Number(s.min),mx=Number(s.max),st=Number(s.step),ans=Number(s.correct),mg=(s.margin===''||s.margin==null)?0:Number(s.margin);
+      const err=m=>({error:lbl(q)+' (slider): '+m});
+      if(raw.some(v=>v===''||v==null)||![mn,mx,st,ans,mg].every(Number.isFinite))return err('isi Min, Maks, Langkah, dan Jawaban benar dengan angka.');
+      if(mn>=mx)return err('Min harus lebih kecil dari Maks.');
+      if(st<=0)return err('Langkah harus lebih dari 0.');
+      if((mx-mn)/st>1000)return err('terlalu banyak langkah (maksimal 1000). Perbesar nilai Langkah.');
+      if(ans<mn||ans>mx)return err('Jawaban benar harus berada di antara Min dan Maks.');
+      if(mg<0)return err('Toleransi tidak boleh negatif.');
+      out.push(Object.assign(base,{opts:[],correct:-1,min:mn,max:mx,step:st,ans,margin:mg,unit:String(s.unit||'').trim()}));
+      continue;
+    }
+    if(ty==='puzzle'||ty==='poll'){
+      let items=q.opts.map(o=>o.trim()).filter(Boolean);
+      if(items.length<2)return {error:lbl(q)+' ('+TYPE_LABEL[ty]+') harus punya minimal 2 isian.'};
+      if(ty==='poll'&&cfg.shuffleOpts)shuffle(items);
+      out.push(Object.assign(base,{opts:items,correct:-1}));
       continue;
     }
     const idx=[]; q.opts.forEach((o,k)=>{ if(o.trim())idx.push(k); });
     if(idx.length<2||!idx.includes(q.correct))
-      return {error:'Soal "'+(q.q.trim().slice(0,40)||'(bergambar)')+'" harus punya minimal 2 pilihan dan kotak jawaban benar harus berisi teks.'};
+      return {error:lbl(q)+' harus punya minimal 2 pilihan dan kotak jawaban benar harus berisi teks.'};
     let opts=idx.map(k=>q.opts[k].trim()), correct=idx.indexOf(q.correct);
     if(cfg.shuffleOpts){
       const order=shuffle(opts.map((_,n)=>n));      // order[posisiBaru] = posisiLama
       opts=order.map(n=>opts[n]); correct=order.indexOf(correct);
     }
-    out.push({q:q.q.trim(),opts,correct,time:q.time||20,img:q.img||'',tf:false});
+    out.push(Object.assign(base,{opts,correct}));
   }
   if(!out.length)return {error:'Tambahkan minimal 1 soal yang terisi.'};
   if(cfg.shuffle)shuffle(out);
@@ -906,9 +1046,10 @@ $('btnLaunch').onclick=()=>hostStart();
      games/{pin}/presence/{pid}  true         penanda siswa online
      games/{pin}/img/{index}     data URL gambar soal
    ===================================================== */
-const H={sid:0,pin:'',base:'',ready:false,conns:{},inRef:null,presRef:null,
+const H={prev:new Map(),scTok:0,sid:0,pin:'',base:'',ready:false,conns:{},inRef:null,presRef:null,vals:[],cloud:new Map(),hidden:new Set(),
   players:new Map(),qs:[],i:-1,phase:'idle',qStart:0,tick:null,counts:[],cfg:{mode:'solo',nteams:4,shuffle:false}};
 const isTeam=()=>H.cfg.mode!=='solo';
+const nScored=()=>H.qs.filter(isScored).length;
 function joinLink(){ return location.href.split('#')[0].split('?')[0]+'?pin='+H.pin; }
 
 function hostStart(){
@@ -1009,8 +1150,16 @@ function shuffleTeams(){
 }
 $('btnShuffleTeams').onclick=shuffleTeams;
 
+const avOf=p=>AV[p.av]||'🙂';
+const avHtml=p=>`<span class="av">${avOf(p)}</span>`;
+function pickAvatar(){        // utamakan karakter yang belum dipakai
+  const used=new Set([...H.players.values()].map(p=>p.av));
+  const free=AV.map((_,i)=>i).filter(i=>!used.has(i));
+  const pool=free.length?free:AV.map((_,i)=>i);
+  return pool[Math.floor(Math.random()*pool.length)];
+}
 function joinedMsg(p){
-  return {t:'joined',name:p.name,mode:H.cfg.mode,teams:isTeam()?TEAMS.slice(0,H.cfg.nteams):[],team:p.team};
+  return {t:'joined',name:p.name,mode:H.cfg.mode,teams:isTeam()?TEAMS.slice(0,H.cfg.nteams):[],team:p.team,av:p.av};
 }
 
 function onHostMsg(conn,m){
@@ -1026,7 +1175,7 @@ function onHostMsg(conn,m){
       p.conn=conn;p.connected=true;
     }else{
       if(H.phase!=='lobby'){send(conn,{t:'error',msg:'Game sudah dimulai. Tunggu game berikutnya.'});return;}
-      p={name,key,conn,connected:true,score:0,streak:0,right:0,ans:null,team:-1};
+      p={name,key,conn,connected:true,score:0,streak:0,right:0,ans:null,team:-1,av:pickAvatar()};
       if(H.cfg.mode==='auto')p.team=smallestTeam();
       H.players.set(key,p); Snd.join();
     }
@@ -1036,32 +1185,94 @@ function onHostMsg(conn,m){
     const p=conn._p; if(!p||H.phase!=='lobby'||H.cfg.mode!=='choose')return;
     const k=parseInt(m.k); if(!(k>=0&&k<H.cfg.nteams))return;
     p.team=k; send(conn,{t:'team',k}); renderLobby();
+  }else if(m.t==='avatar'){
+    const p=conn._p; if(!p||H.phase!=='lobby')return;
+    const a=parseInt(m.a); if(!(a>=0&&a<AV.length))return;
+    p.av=a; send(conn,{t:'avatar',a}); renderLobby();
   }else if(m.t==='answer'){
     const p=conn._p; if(!p||H.phase!=='question'||p.ans)return;
-    const q=H.qs[H.i]; const k=parseInt(m.k);
-    if(!(k>=0&&k<q.opts.length))return;
+    const q=H.qs[H.i];
     const el=(Date.now()-H.qStart)/1000; if(el>q.time+1.5)return;
-    const ok=(k===q.correct); let pts=0;
-    if(ok){
-      pts=Math.round(1000*(1-Math.min(el/q.time,1)/2))+Math.min(p.streak,4)*100;
-      p.streak++; p.right++;
-    }else p.streak=0;
-    p.score+=pts; p.ans={k,ok,pts}; H.counts[k]++;
+    const a=gradeAnswer(q,m,el,p); if(!a)return;
+    if(isScored(q)){ if(a.ok){p.streak++;p.right++;}else p.streak=0; }
+    p.score+=a.pts; p.ans=a;
     send(conn,{t:'ack'}); updateHost();
     const live=[...H.players.values()].filter(x=>x.connected);
     if(live.length&&live.every(x=>x.ans))reveal();
   }
 }
+// Menilai satu jawaban. Mengembalikan {k,ok,pts,...} atau null bila tidak valid.
+function gradeAnswer(q,m,el,p){
+  const base=Math.round(1000*(1-Math.min(el/q.time,1)/2));
+  const bonus=Math.min(p.streak,4)*100;
+  switch(q.ty){
+    case 'mc': case 'tf': {
+      const k=parseInt(m.k); if(!(k>=0&&k<q.opts.length))return null;
+      const ok=(k===q.correct); H.counts[k]++;
+      return {k,ok,pts:ok?base+bonus:0};
+    }
+    case 'poll': {
+      const k=parseInt(m.k); if(!(k>=0&&k<q.opts.length))return null;
+      H.counts[k]++;
+      return {k,ok:null,pts:0};
+    }
+    case 'puzzle': {
+      const ord=m.ord, n=q.opts.length;
+      if(!Array.isArray(ord)||ord.length!==n)return null;
+      const seen={};
+      for(const d of ord){ if(!Number.isInteger(d)||d<0||d>=n||seen[d])return null; seen[d]=1; }
+      const ok=ord.every((d,j)=>q.shuf[d]===j);   // posisi j harus berisi item asli ke-j
+      H.counts[ok?0:1]++;
+      return {k:0,ok,pts:ok?base+bonus:0};
+    }
+    case 'slider': {
+      let v=Number(m.v); if(!Number.isFinite(v))return null;
+      v=Math.min(q.max,Math.max(q.min,v));
+      v=q.min+Math.round((v-q.min)/q.step)*q.step; v=Math.min(q.max,Math.max(q.min,+v.toFixed(6)));
+      const diff=Math.abs(v-q.ans), ok=diff<=q.margin+1e-9;
+      const f=ok?(q.margin>0?1-0.5*(diff/q.margin):1):0;
+      H.vals.push(v);
+      return {k:0,ok,pts:ok?Math.round(base*f)+bonus:0,v};
+    }
+    case 'cloud': {
+      const words=[], seen={};
+      (Array.isArray(m.w)?m.w:[]).forEach(x=>{
+        const t=String(x==null?'':x).trim().replace(/\s+/g,' ').slice(0,24), key=t.toLowerCase();
+        if(t&&!seen[key]&&words.length<3){ seen[key]=1; words.push({t,key}); }
+      });
+      if(!words.length)return null;
+      words.forEach(w=>{ const e=H.cloud.get(w.key); if(e)e.n++; else H.cloud.set(w.key,{t:w.t,n:1}); });
+      return {k:0,ok:null,pts:0};
+    }
+  }
+  return null;
+}
+function dispOpts(q){ return q.ty==='puzzle'?q.shuf.map(i=>q.opts[i]):q.opts; }
+function makeShuf(n){
+  const id=[...Array(n).keys()]; let a=id.slice(), tries=0;
+  do{ shuffle(a); tries++; }while(n>1&&tries<20&&a.every((v,i)=>v===id[i]));
+  return a;
+}
 function questionMsg(){
   const q=H.qs[H.i]; const remain=Math.max(0,q.time-(Date.now()-H.qStart)/1000);
-  return {t:'q',i:H.i,total:H.qs.length,q:q.q,opts:q.opts,time:q.time,remain,hasImg:!!q.img,tf:!!q.tf};
+  return {t:'q',i:H.i,total:H.qs.length,q:q.q,opts:dispOpts(q),time:q.time,remain,hasImg:!!q.img,tf:!!q.tf,ty:q.ty,
+    sl:q.ty==='slider'?{min:q.min,max:q.max,step:q.step,unit:q.unit}:null};
 }
 function ranking(){
   return [...H.players.values()].sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name));
 }
+function resultInfo(q,a){
+  if(q.ty==='puzzle'&&!a.ok)return 'Urutan benar: '+q.opts.join(' → ');
+  if(q.ty==='slider'){
+    const u=q.unit?' '+q.unit:'';
+    return 'Jawaban benar: '+fmtN(q.ans)+u+(typeof a.v==='number'?' · jawabanmu: '+fmtN(a.v)+u:'');
+  }
+  return '';
+}
 function resultMsg(p,r,n,ts){
-  const q=H.qs[H.i];
-  return Object.assign({t:'result',ok:p.ans.ok,pts:p.ans.pts,score:p.score,rank:r,total:n,streak:p.streak,correct:q.correct,timeout:p.ans.k===-1},teamInfo(p,ts));
+  const q=H.qs[H.i], a=p.ans;
+  return Object.assign({t:'result',ty:q.ty,scored:isScored(q),ok:!!a.ok,pts:a.pts,score:p.score,rank:r,total:n,streak:p.streak,
+    correct:q.correct,timeout:a.k===-1,info:resultInfo(q,a)},teamInfo(p,ts));
 }
 function syncPlayer(p){
   if(H.phase==='question'){
@@ -1074,9 +1285,12 @@ function syncPlayer(p){
 }
 function updateHost(){
   if(H.phase==='lobby')renderLobby();
-  else if(H.phase==='question')renderAnswered();
+  else if(H.phase==='question'){
+    renderAnswered();
+    const q=H.qs[H.i]; if(q&&q.ty==='cloud')renderCloud($('hQExtra'),true);
+  }
 }
-function chipHtml(p){ return `<button class="chip ${p.connected?'':'off'}" data-k="${esc(p.key)}">${esc(p.name)}</button>`; }
+function chipHtml(p){ return `<button class="chip ${p.connected?'':'off'}" data-k="${esc(p.key)}">${avHtml(p)}${esc(p.name)}</button>`; }
 function renderLobby(){
   const list=[...H.players.values()];
   $('hCount').textContent=list.filter(p=>p.connected).length;
@@ -1122,18 +1336,56 @@ $('btnLobbyBack').onclick=()=>{ if(confirm('Batalkan game dan kembali ke perpust
 function nextQ(){
   H.i++;
   if(H.i>=H.qs.length){endGame();return;}
+  H.prev=new Map(ranking().map((p,i)=>[p.key,{rank:i+1,score:p.score}]));   // untuk animasi papan skor
   H.players.forEach(p=>p.ans=null);
-  H.phase='question'; H.counts=H.qs[H.i].opts.map(()=>0); H.qStart=Date.now(); H.lastSec=99; Snd.start();
   const q=H.qs[H.i];
-  $('hQNo').textContent='Soal '+(H.i+1)+'/'+H.qs.length;
+  H.counts=q.opts.map(()=>0);
+  if(q.ty==='puzzle'){ H.counts=[0,0]; q.shuf=makeShuf(q.opts.length); }
+  H.vals=[]; H.cloud=new Map(); H.hidden=new Set();
+  H.phase='question'; H.qStart=Date.now(); H.lastSec=99; Snd.start();
+  $('hQNo').textContent='Soal '+(H.i+1)+'/'+H.qs.length+' · '+TYPE_LABEL[q.ty];
   $('hQText').textContent=q.q; $('hQText').style.display=q.q?'':'none';
   $('hQImg').innerHTML=q.img?`<img src="${q.img}" alt="">`:'';
-  $('hOpts').className='opts'+(q.tf?' tf':'');
-  $('hOpts').innerHTML=q.opts.map((o,k)=>`<div class="opt ${optC(k,q.tf)}"><span class="sy">${optS(k,q.tf)}</span><span class="tx">${esc(o)}</span></div>`).join('');
+  const ho=$('hOpts'), hx=$('hQExtra'); hx.innerHTML='';
+  if(q.ty==='cloud'||q.ty==='slider'){
+    ho.className='opts'; ho.innerHTML='';
+    if(q.ty==='cloud')renderCloud(hx,true);
+    else hx.innerHTML=`<div class="statbox" style="text-align:center;font-size:1.4rem">Geser slider dari <b>${fmtN(q.min)}</b> sampai <b>${fmtN(q.max)}</b>${q.unit?' ('+esc(q.unit)+')':''}</div>`;
+  }else{
+    ho.className='opts'+(q.tf?' tf':'');
+    ho.innerHTML=dispOpts(q).map((o,k)=>`<div class="opt ${optC(k,q.tf)}"><span class="sy">${optS(k,q.tf)}</span><span class="tx">${esc(o)}</span></div>`).join('');
+  }
   $('hTime').textContent=q.time; $('hBar').style.width='100%';
   renderAnswered(); show('s-hq');
   const msg=questionMsg(); H.players.forEach(p=>send(p.conn,msg));
   clearInterval(H.tick); H.tick=setInterval(tick,200);
+}
+// ----- awan kata -----
+function renderCloud(el,live){
+  const arr=[...H.cloud.entries()].filter(([k])=>!H.hidden.has(k)).map(([k,v])=>({k,t:v.t,n:v.n}));
+  if(!arr.length){ el.innerHTML='<div class="cloud"><span class="muted">'+(live?'Menunggu jawaban…':'Tidak ada kata terkumpul.')+'</span></div>'; return; }
+  const max=Math.max.apply(null,arr.map(a=>a.n));
+  arr.sort((a,b)=>b.n-a.n||a.t.localeCompare(b.t));
+  el.innerHTML='<div class="cloud">'+arr.map((a,i)=>
+    `<button type="button" class="cw" data-k="${esc(a.k)}" title="${a.n}× · klik untuk menyembunyikan" style="font-size:${(1.1+2.6*a.n/max).toFixed(2)}rem;color:${CW_COLORS[i%CW_COLORS.length]}">${esc(a.t)}</button>`).join('')+
+    '</div><div class="hint" style="color:rgba(255,255,255,.7);text-align:center">Klik sebuah kata untuk menyembunyikannya.</div>';
+}
+['hQExtra','hRExtra'].forEach(id=>$(id).addEventListener('click',e=>{
+  const b=e.target.closest('.cw'); if(!b)return;
+  H.hidden.add(b.dataset.k); renderCloud($(id),id==='hQExtra');
+}));
+// ----- grafik slider -----
+function sliderChartHtml(q){
+  const span=q.max-q.min, pos=v=>(((v-q.min)/span)*100).toFixed(2);
+  const lo=Math.max(q.min,q.ans-q.margin), hi=Math.min(q.max,q.ans+q.margin);
+  const byV={}; H.vals.forEach(v=>{ byV[v]=(byV[v]||0)+1; });
+  const bars=Object.keys(byV).map(k=>`<i class="slbar" title="${byV[k]} siswa" style="left:${pos(+k)}%;height:${Math.min(170,byV[k]*22)}px"></i>`).join('');
+  const within=H.vals.filter(v=>Math.abs(v-q.ans)<=q.margin+1e-9).length, u=q.unit?' '+esc(q.unit):'';
+  return `<div class="slchart"><div class="slplot">
+    ${q.margin>0?`<div class="slband" style="left:${pos(lo)}%;width:${(pos(hi)-pos(lo)).toFixed(2)}%"></div>`:''}
+    <div class="slaxis"></div>${bars}
+    <div class="slans" style="left:${pos(q.ans)}%"><b>${fmtN(q.ans)}${u}</b></div></div>
+    <div class="slmm"><span>${fmtN(q.min)}</span><span>${H.vals.length?within+' dari '+H.vals.length+' dalam rentang benar':'Belum ada jawaban'}</span><span>${fmtN(q.max)}</span></div></div>`;
 }
 function renderAnswered(){
   const live=[...H.players.values()].filter(p=>p.connected);
@@ -1151,46 +1403,102 @@ function tick(){
 $('btnSkip').onclick=()=>reveal();
 
 function dotFor(p){ return (isTeam()&&p.team>=0)?`<span class="dot" style="background:${TEAMS[p.team].c}"></span>`:''; }
-function boardHtml(r,limit){
-  let h='';
-  if(isTeam()){
-    const ts=teamStats();
-    h+='<div class="bh">Papan Skor Tim <small style="color:#6b6b80;font-weight:600">(rata-rata per anggota)</small></div>';
-    h+=ts.map((t,i)=>`<div class="row"><span class="rk">${i+1}</span><span class="dot" style="background:${t.color}"></span><span class="nm">${esc(t.name)} <small>${t.size} anggota</small></span><span class="sc">${fmt(t.avg)}</span></div>`).join('');
-    h+='<div class="bh" style="margin-top:8px">Peringkat Individu</div>';
-  }else h+='<div class="bh">Papan Skor</div>';
-  const rows=limit?r.slice(0,limit):r;
-  h+=rows.map((p,k)=>`<div class="row"><span class="rk">${k+1}</span><span class="nm">${dotFor(p)}${esc(p.name)}${p.connected?'':' 📡'}</span><span class="sc">${fmt(p.score)}</span></div>`).join('')||'<div class="row">Belum ada pemain</div>';
-  return h;
+function renderReveal(q){
+  const ro=$('hROpts'), rx=$('hRExtra'); ro.innerHTML=''; rx.innerHTML=''; ro.className='opts';
+  if(q.ty==='mc'||q.ty==='tf'){
+    ro.className='opts'+(q.tf?' tf':'');
+    ro.innerHTML=q.opts.map((o,k)=>
+      `<div class="opt ${optC(k,q.tf)} ${k===q.correct?'win':'dim'}"><span class="sy">${k===q.correct?'✔':optS(k,q.tf)}</span><span class="tx">${esc(o)}</span><span class="cnt">${H.counts[k]}</span></div>`).join('');
+  }else if(q.ty==='poll'){
+    ro.innerHTML=q.opts.map((o,k)=>
+      `<div class="opt ${optC(k,false)}"><span class="sy">${SYM[k]}</span><span class="tx">${esc(o)}</span><span class="cnt">${H.counts[k]}</span></div>`).join('');
+  }else if(q.ty==='puzzle'){
+    ro.innerHTML=q.opts.map((o,j)=>`<div class="opt ${optC(j%4,false)} win"><span class="sy">${j+1}</span><span class="tx">${esc(o)}</span></div>`).join('');
+    rx.innerHTML=`<div class="statbox" style="text-align:center">✔ ${H.counts[0]} dari ${H.counts[0]+H.counts[1]} siswa menyusun urutan dengan benar</div>`;
+  }else if(q.ty==='slider'){
+    rx.innerHTML=sliderChartHtml(q);
+  }else if(q.ty==='cloud'){
+    renderCloud(rx,false);
+  }
 }
 function reveal(){
   if(H.phase!=='question')return;
   clearInterval(H.tick); H.phase='reveal';
-  const q=H.qs[H.i];
+  const q=H.qs[H.i], sc=isScored(q);
   if((Date.now()-H.qStart)/1000>=q.time-0.3)Snd.timeup(); else Snd.reveal();
-  H.players.forEach(p=>{ if(!p.ans){p.streak=0;p.ans={k:-1,ok:false,pts:0};} });
+  H.players.forEach(p=>{ if(!p.ans){ if(sc)p.streak=0; p.ans={k:-1,ok:sc?false:null,pts:0}; } });
   const r=ranking(), ts=teamStats();
   r.forEach((p,k)=>send(p.conn,resultMsg(p,k+1,r.length,ts)));
-  $('hRNo').textContent='Soal '+(H.i+1)+'/'+H.qs.length;
+  $('hRNo').textContent='Soal '+(H.i+1)+'/'+H.qs.length+' · '+TYPE_LABEL[q.ty];
   $('hRText').textContent=q.q||'(Soal bergambar)';
-  $('hROpts').className='opts'+(q.tf?' tf':'');
-  $('hROpts').innerHTML=q.opts.map((o,k)=>
-    `<div class="opt ${optC(k,q.tf)} ${k===q.correct?'win':'dim'}"><span class="sy">${k===q.correct?'✔':optS(k,q.tf)}</span><span class="tx">${esc(o)}</span><span class="cnt">${H.counts[k]}</span></div>`).join('');
-  $('hRBoard').innerHTML=boardHtml(r,5);
-  $('btnNext').textContent=(H.i+1>=H.qs.length)?'Lihat Hasil Akhir 🏆':'Soal Berikutnya ▶';
+  renderReveal(q);
+  $('btnNext').textContent=(H.i+1>=H.qs.length)?'Lihat Hasil Akhir 🏆':'Papan Skor ▶';
   show('s-hr');
 }
-$('btnNext').onclick=()=>nextQ();
+// ----- papan skor antar soal (animasi salip-menyalip ala Kahoot) -----
+function showScoreboard(){
+  const ROW=68, TOP=5, tok=++H.scTok, first=(H.i===0);
+  const r=ranking(), ts=isTeam()?teamStats():[];
+  const info=r.map((p,i)=>{
+    const pv=H.prev.get(p.key)||{rank:i+1,score:p.score};
+    return {p,nw:i+1,old:first?i+1:pv.rank,oldScore:first?0:pv.score,gain:p.score-(first?0:pv.score)};
+  });
+  // siapa menyalip siapa (berdasarkan skor, bukan sekadar urutan nama)
+  const ovt=[];
+  if(!first)info.forEach(x=>{
+    if(x.nw>=x.old||x.nw>TOP)return;
+    const passed=info.filter(y=>y!==x&&y.oldScore>x.oldScore&&x.p.score>y.p.score&&y.old<x.old).sort((a,b)=>a.old-b.old)[0];
+    if(passed)ovt.push({x,y:passed});
+  });
+  ovt.sort((a,b)=>a.x.nw-b.x.nw);
+  $('hsNo').textContent='Soal '+(H.i+1)+'/'+H.qs.length;
+  $('hsTeams').innerHTML=ts.length?'<div class="board" style="max-width:760px;margin:0 auto 14px"><div class="bh">Peringkat Tim <small style="color:#6b6b80;font-weight:600">(rata-rata per anggota)</small></div>'+
+    ts.map((t,i)=>`<div class="row"><span class="rk">${i+1}</span><span class="dot" style="background:${t.color}"></span><span class="nm">${esc(t.name)} <small>${t.size} anggota</small></span><span class="sc">${fmt(t.avg)}</span></div>`).join('')+'</div>':'';
+  $('hsOvt').innerHTML=ovt.slice(0,3).map(o=>o.x.nw===1
+    ?`<div class="ovt">👑 <b>${esc(o.x.p.name)}</b> merebut peringkat 1 dari <b>${esc(o.y.p.name)}</b>!</div>`
+    :`<div class="ovt">🚀 <b>${esc(o.x.p.name)}</b> menyalip <b>${esc(o.y.p.name)}</b>!</div>`).join('');
+  const rows=info.filter(x=>x.nw<=TOP||x.old<=TOP);
+  const bd=$('hsBoard');
+  bd.innerHTML=rows.map(x=>
+    `<div class="srow" data-k="${esc(x.p.key)}" style="top:${(x.old-1)*ROW}px"><span class="rk">${x.old}</span>
+      <span class="nm">${avHtml(x.p)}${dotFor(x.p)}${esc(x.p.name)}${x.p.connected?'':' 📡'}${x.p.streak>=2?' 🔥'+x.p.streak:''}</span>
+      <span class="gain">${x.gain>0?'+'+fmt(x.gain):''}</span><span class="mv"></span><span class="sc">${fmt(x.oldScore)}</span></div>`).join('');
+  show('s-hs');
+  const els={}; bd.querySelectorAll('.srow').forEach(e=>{ els[e.dataset.k]=e; });
+  setTimeout(()=>{
+    if(tok!==H.scTok||H.phase==='idle')return;
+    Snd.reveal();
+    rows.forEach(x=>{
+      const e=els[x.p.key]; if(!e)return;
+      e.style.top=((x.nw-1)*ROW)+'px'; e.classList.add('go'); e.classList.toggle('top1',x.nw===1);
+      e.querySelector('.rk').textContent=x.nw;
+      const mv=e.querySelector('.mv'), d=x.old-x.nw;
+      if(!first&&d>0){ mv.textContent='▲ '+d; mv.className='mv up'; }
+      else if(!first&&d<0){ mv.textContent='▼ '+(-d); mv.className='mv dn'; }
+    });
+    $('hsOvt').querySelectorAll('.ovt').forEach((e,i)=>setTimeout(()=>e.classList.add('in'),500+i*400));
+    // hitung naik skor
+    const t0=performance.now(), D=900;
+    (function step(now){
+      if(tok!==H.scTok)return;
+      const f=Math.min(1,(now-t0)/D), k=1-Math.pow(1-f,3);
+      rows.forEach(x=>{ const e=els[x.p.key]; if(e)e.querySelector('.sc').textContent=fmt(Math.round(x.oldScore+(x.p.score-x.oldScore)*k)); });
+      if(f<1)requestAnimationFrame(step);
+    })(t0);
+  },first?500:900);
+}
+$('btnNext').onclick=()=>{ if(H.phase!=='reveal')return; if(H.i+1>=H.qs.length)nextQ(); else showScoreboard(); };   // soal terakhir: langsung ke podium
+$('btnNext2').onclick=()=>{ if(H.phase==='reveal'&&H.i+1<H.qs.length)nextQ(); };
 function askEnd(){ if(confirm('Akhiri permainan sekarang dan tampilkan hasil akhir?'))endGame(); }
-$('btnEnd1').onclick=askEnd; $('btnEnd2').onclick=askEnd;
+$('btnEnd1').onclick=askEnd; $('btnEnd2').onclick=askEnd; $('btnEnd3').onclick=askEnd;
 
 function endMsg(p,r,ts){
-  return Object.assign({t:'end',rank:r.indexOf(p)+1,total:r.length,score:p.score,right:p.right,q:H.qs.length},teamInfo(p,ts));
+  return Object.assign({t:'end',rank:r.indexOf(p)+1,total:r.length,score:p.score,right:p.right,q:nScored()},teamInfo(p,ts));
 }
 function podiumHtml(items){
   const order=[items[1],items[0],items[2]], cls=['p2','p1','p3'], medal=['🥈','🥇','🥉'];
   return order.map((p,k)=>p?
-    `<div class="pod ${cls[k]}"><div class="pn">${p.color?`<span class="dot" style="background:${p.color}"></span>`:''}${esc(p.name)}</div><div class="ps">${fmt(p.score)}</div><div class="bl">${medal[k]}</div></div>`:'').join('');
+    `<div class="pod ${cls[k]}"><div class="pav ${p.avSm?'sm':''}">${p.av||''}</div><div class="pn">${p.color?`<span class="dot" style="background:${p.color}"></span>`:''}${esc(p.name)}</div><div class="ps">${fmt(p.score)}</div><div class="bl">${medal[k]}</div></div>`:'').join('');
 }
 function endGame(){
   clearInterval(H.tick); H.phase='end'; Snd.fanfare();
@@ -1198,10 +1506,10 @@ function endGame(){
   r.forEach(p=>send(p.conn,endMsg(p,r,ts)));
   if(isTeam()){
     $('heTitle').textContent='🏆 Tim Terbaik';
-    $('hPodium').innerHTML=podiumHtml(ts.filter(t=>t.size>0).map(t=>({name:t.name,score:t.avg,color:t.color})));
+    $('hPodium').innerHTML=podiumHtml(ts.filter(t=>t.size>0).map(t=>({name:t.name,score:t.avg,color:t.color,avSm:true,av:[...H.players.values()].filter(p=>p.team===t.k).slice(0,8).map(avOf).join('')})));
   }else{
     $('heTitle').textContent='🏆 Hasil Akhir';
-    $('hPodium').innerHTML=podiumHtml(r.map(p=>({name:p.name,score:p.score})));
+    $('hPodium').innerHTML=podiumHtml(r.map(p=>({name:p.name,score:p.score,av:avOf(p)})));
   }
   let h='';
   if(isTeam()){
@@ -1209,7 +1517,7 @@ function endGame(){
     h+=ts.map((t,i)=>`<div class="row"><span class="rk">${i+1}</span><span class="dot" style="background:${t.color}"></span><span class="nm">${esc(t.name)} <small>${t.size} anggota</small></span><span class="sc">${fmt(t.avg)}</span></div>`).join('');
     h+='<div class="bh" style="margin-top:8px">Peringkat Individu</div>';
   }
-  h+=r.map((p,k)=>`<div class="row"><span class="rk">${k+1}</span><span class="nm">${dotFor(p)}${esc(p.name)}</span><span class="sc">${p.right}/${H.qs.length} benar · ${fmt(p.score)}</span></div>`).join('')||'<div class="row">Tidak ada pemain.</div>';
+  h+=r.map((p,k)=>`<div class="row"><span class="rk">${k+1}</span><span class="nm">${avHtml(p)}${dotFor(p)}${esc(p.name)}</span><span class="sc">${nScored()?p.right+'/'+nScored()+' benar · ':''}${fmt(p.score)}</span></div>`).join('')||'<div class="row">Tidak ada pemain.</div>';
   $('hFull').innerHTML=h;
   show('s-he');
 }
@@ -1218,7 +1526,7 @@ $('btnCsv').onclick=()=>{
   const lines=[isTeam()?'Peringkat,Nama,Tim,Jawaban Benar,Jumlah Soal,Skor':'Peringkat,Nama,Jawaban Benar,Jumlah Soal,Skor'];
   r.forEach((p,k)=>{
     const row=[k+1,q(p.name)]; if(isTeam())row.push(p.team>=0?q('Tim '+TEAMS[p.team].n):'""');
-    row.push(p.right,H.qs.length,p.score); lines.push(row.join(','));
+    row.push(p.right,nScored(),p.score); lines.push(row.join(','));
   });
   if(isTeam()){
     lines.push(''); lines.push('Peringkat Tim,Tim,Anggota,Rata-rata Skor');
@@ -1228,7 +1536,7 @@ $('btnCsv').onclick=()=>{
 };
 $('btnAgain').onclick=()=>stopHost(true);
 function stopHost(toLib){
-  clearInterval(H.tick); H.sid++;
+  clearInterval(H.tick); H.sid++; H.scTok++;
   const b=H.base;
   detachHost();
   if(b&&db){ db.ref(b).remove().catch(e=>console.error('hapus game',e)); }
@@ -1242,7 +1550,7 @@ function stopHost(toLib){
    ===================================================== */
 const P={conn:null,base:'',outRef:null,connRef:null,presRef:null,wasOff:false,fetching:{},
   name:'',pin:'',joined:false,ended:false,timer:null,to:null,deadline:0,dur:0,answered:false,
-  mode:'solo',teams:[],team:-1,imgs:{},curQ:-1,hasImg:false};
+  mode:'solo',teams:[],team:-1,imgs:{},curQ:-1,hasImg:false,av:0};
 
 function setErr(m){ $('joinErr').textContent=m; $('discErr').textContent=m; }
 function cleanupPlayer(){
@@ -1290,6 +1598,14 @@ function playerJoin(){
     P.conn.send({t:'join',name});
   }).catch(e=>fail('Gagal terhubung ('+(e.code||e.message)+').'));
 }
+function renderAvatars(){
+  $('pAvBox').innerHTML=`<div class="avbig">${AV[P.av]||'🙂'}</div><div class="muted" style="margin-bottom:8px">Pilih karakter:</div>`+
+    `<div class="avgrid">${AV.map((a,i)=>`<button type="button" data-av="${i}" class="${P.av===i?'sel':''}" aria-label="Karakter ${i+1}">${a}</button>`).join('')}</div>`;
+}
+$('pAvBox').addEventListener('click',e=>{
+  const b=e.target.closest('button[data-av]'); if(!b)return;
+  const a=+b.dataset.av; P.av=a; renderAvatars(); send(P.conn,{t:'avatar',a}); Snd.click();
+});
 function renderWait(){
   $('pName').textContent=P.name;
   const box=$('pTeamBox');
@@ -1315,10 +1631,13 @@ function onPlayerMsg(m){
   switch(m.t){
     case 'joined':
       P.joined=true; clearTimeout(P.to); resetJoinBtn(); setErr(''); Snd.join();
+      P.av=(typeof m.av==='number')?m.av:0; renderAvatars();
       P.name=m.name; P.mode=m.mode||'solo'; P.teams=m.teams||[]; P.team=(typeof m.team==='number')?m.team:-1;
       renderWait();
       if(!$('s-pq').classList.contains('active'))show('s-pwait');
       break;
+    case 'avatar':
+      P.av=m.a; renderAvatars(); break;
     case 'team':
       P.team=m.k; renderWait(); setTeamPill(); break;
     case 'error':
@@ -1344,18 +1663,70 @@ function setQImg(){
     else P.fetching[i]=false;
   }).catch(()=>{ P.fetching[i]=false; });
 }
+function lockExtra(){
+  P.answered=true;
+  $('pqExtra').querySelectorAll('button,input').forEach(x=>x.disabled=true);
+}
 function showQuestion(m){
-  P.answered=false; P.curQ=m.i; P.hasImg=!!m.hasImg;
-  $('pqNo').textContent='Soal '+(m.i+1)+'/'+m.total;
+  P.answered=false; P.curQ=m.i; P.hasImg=!!m.hasImg; P.ty=m.ty||(m.tf?'tf':'mc');
+  const opts=m.opts||[];
+  $('pqNo').textContent='Soal '+(m.i+1)+'/'+m.total+' · '+(TYPE_LABEL[P.ty]||'');
   $('pqText').textContent=m.q||''; $('pqText').style.display=m.q?'':'none';
   setQImg(); setTeamPill();
-  $('pqOpts').className='opts'+(m.tf?' tf':'');
-  $('pqOpts').innerHTML=m.opts.map((o,k)=>`<button class="opt ${optC(k,m.tf)}" data-k="${k}"><span class="sy">${optS(k,m.tf)}</span><span class="tx">${esc(o)}</span></button>`).join('');
+  const po=$('pqOpts'), px=$('pqExtra'); po.innerHTML=''; po.className='opts'; px.innerHTML='';
+  if(P.ty==='puzzle'){ P.pz={items:opts.slice(),order:[]}; renderPuzzle(); }
+  else if(P.ty==='slider'){ buildSlider(m.sl||{min:0,max:100,step:1,unit:''}); }
+  else if(P.ty==='cloud'){ buildCloud(); }
+  else{
+    po.className='opts'+(m.tf?' tf':'');
+    po.innerHTML=opts.map((o,k)=>`<button class="opt ${optC(k,m.tf)}" data-k="${k}"><span class="sy">${optS(k,m.tf)}</span><span class="tx">${esc(o)}</span></button>`).join('');
+  }
   Snd.start();
   P.dur=m.time*1000; P.deadline=Date.now()+m.remain*1000;
   clearInterval(P.timer); P.timer=setInterval(playerTick,100); playerTick();
   show('s-pq');
 }
+function renderPuzzle(){
+  const z=P.pz, n=z.items.length;
+  const slots=z.order.map((d,j)=>`<button type="button" class="pz-item c${d%4}" data-un="${j}"><span class="no">${j+1}</span><span>${esc(z.items[d])}</span></button>`).join('');
+  const pool=z.items.map((t,d)=>z.order.includes(d)?'':`<button type="button" class="pz-item c${d%4}" data-add="${d}"><span class="no">${SYM[d%4]}</span><span>${esc(t)}</span></button>`).join('');
+  $('pqExtra').innerHTML=`<div class="xwrap"><div class="muted" style="font-weight:700;text-align:center">Susun urutan yang benar (ketuk item untuk menambah / melepas)</div>
+    <div class="pz-slots">${slots}</div><div class="pz-pool">${pool}</div>
+    <button type="button" class="btn green" data-send="pz" ${z.order.length===n?'':'disabled'}>Kirim urutan</button></div>`;
+}
+function buildSlider(s){
+  P.sl=s; const unit=s.unit?' '+s.unit:'';
+  const mid=Math.min(s.max,s.min+Math.round(((s.max-s.min)/2)/s.step)*s.step);
+  $('pqExtra').innerHTML=`<div class="xwrap"><div class="slp"><div class="big" id="slVal">${esc(fmtN(mid)+unit)}</div>
+    <input type="range" id="slIn" min="${s.min}" max="${s.max}" step="${s.step}" value="${mid}" aria-label="Geser untuk memilih jawaban">
+    <div class="mm"><span>${esc(fmtN(s.min))}</span><span>${esc(fmtN(s.max))}</span></div>
+    <button type="button" class="btn green" style="width:100%" data-send="sl">Kunci jawaban</button></div></div>`;
+}
+function buildCloud(){
+  $('pqExtra').innerHTML=`<div class="xwrap"><div class="cloudin"><label>Ketik 1–3 kata:</label>
+    <input type="text" maxlength="24" data-cw placeholder="Kata 1" autocomplete="off">
+    <input type="text" maxlength="24" data-cw placeholder="Kata 2 (opsional)" autocomplete="off">
+    <input type="text" maxlength="24" data-cw placeholder="Kata 3 (opsional)" autocomplete="off">
+    <button type="button" class="btn green" style="width:100%" data-send="cl">Kirim</button></div></div>`;
+}
+function submitCloud(){
+  const w=[...$('pqExtra').querySelectorAll('[data-cw]')].map(i=>i.value.trim()).filter(Boolean);
+  if(!w.length){ toast('Tulis minimal satu kata.'); return; }
+  lockExtra(); send(P.conn,{t:'answer',w}); Snd.click();
+}
+$('pqExtra').addEventListener('click',e=>{
+  if(P.answered)return;
+  const b=e.target.closest('button'); if(!b||b.disabled)return;
+  if(b.dataset.add!==undefined){ P.pz.order.push(+b.dataset.add); renderPuzzle(); Snd.click(); }
+  else if(b.dataset.un!==undefined){ P.pz.order.splice(+b.dataset.un,1); renderPuzzle(); }
+  else if(b.dataset.send==='pz'){ const ord=P.pz.order.slice(); lockExtra(); send(P.conn,{t:'answer',ord}); Snd.click(); }
+  else if(b.dataset.send==='sl'){ const v=Number($('slIn').value); lockExtra(); send(P.conn,{t:'answer',v}); Snd.click(); }
+  else if(b.dataset.send==='cl'){ submitCloud(); }
+});
+$('pqExtra').addEventListener('input',e=>{
+  if(e.target.id==='slIn'&&P.sl)$('slVal').textContent=fmtN(e.target.value)+(P.sl.unit?' '+P.sl.unit:'');
+});
+$('pqExtra').addEventListener('keydown',e=>{ if(e.key==='Enter'&&e.target.dataset&&e.target.dataset.cw!==undefined&&!P.answered)submitCloud(); });
 function playerTick(){
   const rem=Math.max(0,P.deadline-Date.now());
   $('pqTime').textContent=Math.ceil(rem/1000);
@@ -1363,6 +1734,7 @@ function playerTick(){
   if(rem<=0){
     clearInterval(P.timer);
     $('pqOpts').querySelectorAll('button').forEach(b=>b.disabled=true);
+    $('pqExtra').querySelectorAll('button,input').forEach(b=>b.disabled=true);
   }
 }
 $('pqOpts').addEventListener('click',e=>{
@@ -1377,25 +1749,28 @@ function teamLine(m,withAvg){
 }
 function showResult(m){
   clearInterval(P.timer);
+  const sc=m.scored!==false;                       // jajak pendapat & awan kata: tanpa penilaian
   const s=$('s-pres');
-  s.classList.remove('okbg','badbg'); s.classList.add(m.ok?'okbg':'badbg');
-  if(m.ok)Snd.correct(); else Snd.wrong();
-  $('prTitle').textContent=m.ok?'Benar! 🎉':(m.timeout?'Waktu habis ⏰':'Kurang tepat 😅');
-  $('prPts').textContent=m.ok?'+'+fmt(m.pts):'+0';
+  s.classList.remove('okbg','badbg'); if(sc)s.classList.add(m.ok?'okbg':'badbg');
+  if(sc){ if(m.ok)Snd.correct(); else Snd.wrong(); } else Snd.reveal();
+  $('prTitle').textContent=sc?(m.ok?'Benar! 🎉':(m.timeout?'Waktu habis ⏰':'Kurang tepat 😅')):(m.timeout?'Waktu habis ⏰':'Jawabanmu tercatat ✅');
+  $('prPts').textContent=sc?(m.ok?'+'+fmt(m.pts):'+0'):'';
   $('prScore').textContent='Skor: '+fmt(m.score);
   $('prRank').textContent='Peringkat '+m.rank+' dari '+m.total;
   const tb=$('prTeam');
   if(m.tn){ tb.style.display=''; tb.style.background=m.tc; tb.textContent=teamLine(m,true); } else tb.style.display='none';
-  $('prStreak').textContent=(m.ok&&m.streak>=2)?'🔥 '+m.streak+' benar berturut-turut!':'';
+  const ib=$('prInfo'); if(m.info){ ib.style.display=''; ib.textContent=m.info; } else ib.style.display='none';
+  $('prStreak').textContent=(sc&&m.ok&&m.streak>=2)?'🔥 '+m.streak+' benar berturut-turut!':'';
   show('s-pres');
 }
 function showEnd(m){
+  $('peAv').textContent=AV[P.av]||'🙂';
   P.ended=true; clearInterval(P.timer);
   $('s-pres').classList.remove('okbg','badbg');
   Snd.fanfare();
   $('peRank').textContent=(m.rank<=3?['🥇','🥈','🥉'][m.rank-1]+' ':'')+'Peringkat '+m.rank;
   $('peScore').textContent='Skor akhir: '+fmt(m.score);
-  $('peRight').textContent=m.right+' dari '+m.q+' soal benar';
+  $('peRight').textContent=m.q>0?m.right+' dari '+m.q+' soal benar':''; $('peRight').style.display=m.q>0?'':'none';
   const tb=$('peTeam');
   if(m.tn){ tb.style.display=''; tb.style.background=m.tc; tb.textContent=teamLine(m,true); } else tb.style.display='none';
   show('s-pend');
