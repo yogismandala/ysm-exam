@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#46178f">
 <meta name="description" content="Kuis kelas interaktif real-time untuk guru dan siswa.">
-<title>Kuis Kelas Live</title>
+<title>Kuis</title>
 <style>
 :root{
   --bg1:#46178f;--bg2:#2b0d5c;--card:#ffffff;--ink:#1d1d2b;--muted:#6b6b80;
@@ -307,18 +307,36 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
 .pod.p1 .pav{font-size:4.4rem}
 .pod .pav.sm{font-size:1.6rem;line-height:1.2;word-break:break-all}
 @media(prefers-reduced-motion:reduce){.pod{animation-delay:0s!important}}
+
+/* ----- daftar nama siswa ----- */
+.pickcard{max-width:460px}
+.pickgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:46vh;overflow:auto;margin:2px 0 14px;padding:2px}
+.pk{border:2px solid #d9d9e6;background:#fff;color:var(--ink);border-radius:10px;padding:12px;font-weight:700;font-family:inherit;font-size:1rem;text-align:left;cursor:pointer;line-height:1.2;word-break:break-word}
+.pk small{display:block;font-weight:600;color:var(--muted);margin-top:2px}
+.pk.sel{border-color:var(--c1);background:#eef4ff;box-shadow:0 0 0 3px rgba(19,104,206,.2)}
+.pk:disabled{opacity:.45;cursor:not-allowed;background:#f1f1f6}
+.absent{margin-top:6px}
+.absent .chip{font-size:.9rem;padding:6px 12px;cursor:default;animation:none;box-shadow:none}
+.rosterbox{border:2px solid #e3e3ee;border-radius:12px;padding:12px 14px;margin:6px 0 12px;background:#fafaff}
+@media(max-width:380px){.pickgrid{grid-template-columns:1fr}}
+.card,.qcard,.rosterbox{color-scheme:light}
+/* ----- PIN yang selalu terlihat saat game berjalan ----- */
+.pillgrp{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pinpill{background:rgba(255,210,63,.16);border-color:rgba(255,210,63,.55);white-space:nowrap}
+.pinpill b{color:#ffd23f;letter-spacing:2px;font-variant-numeric:tabular-nums;margin-left:4px}
 </style>
 </head>
 <body>
 
 <!-- ============ BERANDA / GABUNG SISWA ============ -->
 <section id="s-home" class="screen center active">
-  <div class="logo">🎮 Kuis Kelas Live</div>
+  <div class="logo">Kuis</div>
   <div class="netnote" id="netNote" role="alert"></div>
   <div class="card">
     <h2>Gabung Permainan</h2>
     <input type="text" id="inPin" inputmode="numeric" maxlength="6" placeholder="PIN Game" autocomplete="off">
     <input type="text" id="inName" maxlength="20" placeholder="Tulis namamu" autocomplete="off">
+    <p class="hint" id="rosterHint" style="display:none;margin:-4px 0 12px;text-align:center">Kamu tinggal memilih namamu.</p>
     <button class="btn primary" id="btnJoin">Gabung</button>
     <div class="err" id="joinErr"></div>
   </div>
@@ -328,26 +346,61 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
 <!-- ============ PERPUSTAKAAN KUIS (GURU) ============ -->
 <section id="s-lib" class="screen">
   <div class="bar">
-    <h1>📚 Perpustakaan Kuis</h1>
-    <button class="btn light sm" id="btnLibHome">← Keluar</button>
+    <h1>Perpustakaan Kuis</h1>
+    <button class="btn light sm" id="btnLibHome">Keluar</button>
   </div>
   <div class="libtools">
     <select id="libFilter"></select>
     <button class="btn green sm" id="btnNewQuiz">+ Kuis Baru</button>
-    <button class="btn light sm" id="btnImportLib">⬆ Impor</button>
-    <button class="btn light sm" id="btnBackupAll">⬇ Cadangkan Semua</button>
+    <button class="btn light sm" id="btnRosters">Daftar Nama</button>
+    <button class="btn light sm" id="btnImportLib">Impor</button>
+    <button class="btn light sm" id="btnBackupAll">Cadangkan Semua</button>
     <input type="file" id="fileImportLib" accept=".json,application/json" multiple style="display:none">
   </div>
   <div class="libgrid" id="libList"></div>
-  <p class="muted" style="font-size:.85rem;margin-top:18px">Kuis tersimpan di browser perangkat ini. Gunakan "Cadangkan Semua" secara berkala agar kuis tidak hilang jika data browser dibersihkan atau pindah perangkat.</p>
+  <p class="muted" style="font-size:.85rem;margin-top:18px">Kuis dan daftar nama tersimpan di browser perangkat ini. Gunakan "Cadangkan Semua" secara berkala agar data tidak hilang jika data browser dibersihkan atau pindah perangkat.</p>
+</section>
+
+<!-- ============ DAFTAR NAMA (GURU) ============ -->
+<section id="s-roster" class="screen">
+  <div class="bar">
+    <h1>Daftar Nama Siswa</h1>
+    <button class="btn light sm" id="btnRosterBack">Perpustakaan</button>
+  </div>
+  <div class="libtools">
+    <button class="btn green sm" id="btnNewRoster">+ Daftar Baru</button>
+    <button class="btn light sm" id="btnImportRoster">Impor (.txt / .csv / .json)</button>
+    <input type="file" id="fileImportRoster" accept=".txt,.csv,.json,text/plain,text/csv,application/json" multiple style="display:none">
+  </div>
+  <div class="libgrid" id="rosterList"></div>
+  <p class="muted" style="font-size:.85rem;margin-top:18px">Aktifkan daftar nama di <b>Pengaturan Game</b> sebelum membuat game. Saat aktif, siswa cukup memasukkan PIN lalu memilih namanya.</p>
+</section>
+
+<section id="s-redit" class="screen">
+  <div class="bar">
+    <h1>Daftar Nama</h1>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn light sm" id="btnRCancel">Kembali</button>
+      <button class="btn green sm" id="btnRSave">Simpan</button>
+    </div>
+  </div>
+  <div class="qcard">
+    <label for="rTitle">Nama daftar (mis. kelas)</label>
+    <input type="text" id="rTitle" maxlength="60" placeholder="mis. VII-A" style="margin-top:6px">
+    <label for="rNames">Nama siswa (satu nama per baris)</label>
+    <textarea id="rNames" rows="14" placeholder="Ani Wijaya&#10;Budi Santoso&#10;Cici Lestari" style="margin-top:6px"></textarea>
+    <p class="hint" id="rInfo"></p>
+    <label class="mini upl" style="margin-top:8px">Tambah dari file (.txt / .csv)<input type="file" id="fileRNames" accept=".txt,.csv,text/plain,text/csv" hidden></label>
+    <p class="hint">Nomor di awal baris ("1. Ani") dibuang otomatis, nama yang sama digabung, maksimal 200 nama dan 30 karakter per nama. Pada file CSV, kolom pertama dipakai (atau kolom kedua bila kolom pertama berisi nomor). Nama terlihat oleh siapa pun yang mengetahui PIN game, jadi gunakan nama depan atau inisial bila perlu (mis. "Ani R.").</p>
+  </div>
 </section>
 
 <!-- ============ EDITOR KUIS ============ -->
 <section id="s-edit" class="screen">
   <div class="bar">
-    <div><h1>✏️ Editor Kuis</h1><span class="savest" id="saveState"></span></div>
+    <div><h1>Editor Kuis</h1><span class="savest" id="saveState"></span></div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button class="btn light sm" id="btnEditBack">← Perpustakaan</button>
+      <button class="btn light sm" id="btnEditBack">Perpustakaan</button>
       <button class="btn green sm" id="btnEditPlay">Mainkan ▶</button>
     </div>
   </div>
@@ -371,23 +424,31 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
 <!-- ============ PENGATURAN GAME ============ -->
 <section id="s-setup" class="screen">
   <div class="bar">
-    <h1>⚙️ Pengaturan Game</h1>
-    <button class="btn light sm" id="btnSetupBack">← Perpustakaan</button>
+    <h1>Pengaturan Game</h1>
+    <button class="btn light sm" id="btnSetupBack">Perpustakaan</button>
   </div>
   <div class="qcard">
     <h2 id="suTitle"></h2>
     <p class="hint" id="suInfo"></p>
     <div style="margin-top:16px"><label>Mode bermain</label></div>
     <div class="modes">
-      <label class="mode"><input type="radio" name="gm" value="solo" checked><div><b>👤 Individu</b><br><small>Setiap siswa bersaing sendiri.</small></div></label>
-      <label class="mode"><input type="radio" name="gm" value="auto"><div><b>👥 Tim – dibagi acak</b><br><small>Siswa otomatis masuk tim secara seimbang; guru bisa mengacak ulang.</small></div></label>
-      <label class="mode"><input type="radio" name="gm" value="choose"><div><b>🚩 Tim – siswa memilih</b><br><small>Siswa memilih sendiri timnya di lobby. Yang belum memilih dimasukkan ke tim tersedikit.</small></div></label>
+      <label class="mode"><input type="radio" name="gm" value="solo" checked><div><b>Individu</b><br><small>Setiap siswa bersaing sendiri.</small></div></label>
+      <label class="mode"><input type="radio" name="gm" value="auto"><div><b>Tim – dibagi acak</b><br><small>Siswa otomatis masuk tim secara seimbang; guru bisa mengacak ulang.</small></div></label>
+      <label class="mode"><input type="radio" name="gm" value="choose"><div><b>Tim – siswa memilih</b><br><small>Siswa memilih sendiri timnya di lobby. Yang belum memilih dimasukkan ke tim tersedikit.</small></div></label>
     </div>
     <div id="suTeamOpt" style="display:none">
       <label>Jumlah tim</label>
       <select id="suN" style="margin-top:6px;max-width:200px"><option>2</option><option>3</option><option selected>4</option><option>5</option><option>6</option></select>
       <p class="hint" style="margin:-4px 0 12px">Skor tim = rata-rata skor anggotanya, jadi adil walau jumlah anggota berbeda.</p>
     </div>
+    <div style="margin-top:6px"><label>Daftar nama siswa</label></div>
+    <label class="chk"><input type="checkbox" id="suRoster"> Aktifkan daftar nama (siswa memilih namanya, tidak mengetik)</label>
+    <div id="suRosterOpt" class="rosterbox" style="display:none">
+      <label for="suRosterList">Pakai daftar</label>
+      <select id="suRosterList" style="margin-top:6px"></select>
+      <p class="hint" id="suRosterInfo" style="margin:0"></p>
+    </div>
+    <p class="hint" id="suRosterNone" style="display:none;margin:-2px 0 10px">Belum ada daftar nama. <a href="#" id="lnkMakeRoster" style="color:var(--c1);font-weight:700">Buat daftar nama</a></p>
     <label class="chk"><input type="checkbox" id="suShuffle"> Acak urutan soal</label>
     <label class="chk"><input type="checkbox" id="suShuffleOpts"> Acak urutan pilihan jawaban (pilihan ganda &amp; jajak pendapat)</label>
   </div>
@@ -406,11 +467,12 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
   <button class="mini" id="btnCopy">Salin Link</button>
   <div><div class="pinbox"><div class="l">PIN GAME</div><div class="n" id="hPin">······</div></div></div>
   <div class="muted" id="hStatus"></div>
-  <div class="pill" style="display:inline-block">👥 <span id="hCount">0</span> siswa bergabung</div>
+  <div class="pill" style="display:inline-block"><span id="hCount">0</span> siswa bergabung</div>
   <div id="hPlayers"></div>
+  <div id="hAbsent"></div>
   <div class="muted" style="font-size:.85rem">Klik nama siswa untuk mengeluarkannya.</div>
   <div style="margin-top:20px;display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-    <button class="btn light" id="btnShuffleTeams">🔀 Acak Tim</button>
+    <button class="btn light" id="btnShuffleTeams">Acak Tim</button>
     <button class="btn green big" id="btnStart" disabled>Mulai Permainan ▶</button>
   </div>
 </section>
@@ -418,8 +480,7 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
 <!-- ============ SOAL (GURU) ============ -->
 <section id="s-hq" class="screen">
   <div class="topbar">
-    <span class="pill" id="hQNo">Soal 1/10</span>
-    <span class="pill" id="hAnswered">0/0 menjawab</span>
+    <span class="pillgrp"><span class="pill" id="hQNo">Soal 1/10</span><span class="pill pinpill" title="PIN untuk siswa yang ingin masuk kembali">PIN <b class="pinval"></b></span><span class="pill" id="hAnswered">0/0 menjawab</span></span>
     <div class="timer" id="hTime">20</div>
     <span style="display:flex;gap:8px"><button class="btn light sm" id="btnSkip">Tutup Soal</button><button class="btn light sm" id="btnEnd1">Akhiri</button></span>
   </div>
@@ -433,7 +494,7 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
 <!-- ============ HASIL SOAL (GURU) ============ -->
 <section id="s-hr" class="screen">
   <div class="topbar">
-    <span class="pill" id="hRNo"></span>
+    <span class="pillgrp"><span class="pill" id="hRNo"></span><span class="pill pinpill" title="PIN untuk siswa yang ingin masuk kembali">PIN <b class="pinval"></b></span></span>
     <span style="display:flex;gap:8px"><button class="btn green" id="btnNext">Papan Skor ▶</button><button class="btn light sm" id="btnEnd2">Akhiri</button></span>
   </div>
   <div class="qtext" id="hRText"></div>
@@ -444,7 +505,7 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
 <!-- ============ PAPAN SKOR ANTAR SOAL (GURU) ============ -->
 <section id="s-hs" class="screen">
   <div class="topbar">
-    <span class="pill" id="hsNo"></span>
+    <span class="pillgrp"><span class="pill" id="hsNo"></span><span class="pill pinpill" title="PIN untuk siswa yang ingin masuk kembali">PIN <b class="pinval"></b></span></span>
     <span style="display:flex;gap:8px"><button class="btn green" id="btnNext2">Soal Berikutnya ▶</button><button class="btn light sm" id="btnEnd3">Akhiri</button></span>
   </div>
   <h1 style="text-align:center;margin:6px 0 14px">🏅 Papan Skor</h1>
@@ -465,6 +526,17 @@ input:focus,textarea:focus,select:focus{box-shadow:0 0 0 3px rgba(19,104,206,.25
 </section>
 
 <!-- ============ SISWA ============ -->
+<section id="s-pick" class="screen center">
+  <div class="logo" style="font-size:1.9rem">📋 Pilih Namamu</div>
+  <div class="card pickcard">
+    <input type="text" id="pickSearch" placeholder="Cari namamu…" autocomplete="off" aria-label="Cari nama">
+    <div class="pickgrid" id="pickGrid"></div>
+    <button class="btn primary" id="btnPickGo" disabled>Pilih namamu</button>
+    <div class="err" id="pickErr"></div>
+    <button class="mini" id="btnPickBack" style="margin-top:6px">← Ganti PIN</button>
+  </div>
+</section>
+
 <section id="s-pwait" class="screen">
   <div class="pcenter">
     <div class="bigmsg">Kamu sudah masuk! ✅</div>
@@ -686,9 +758,11 @@ const Store=(function(){
   }
   function lsRead(){ try{ const x=JSON.parse(localStorage.getItem(LSKEY)); return Array.isArray(x)?x:[]; }catch(e){ return []; } }
   function lsWrite(a){ localStorage.setItem(LSKEY,JSON.stringify(a)); }
+  async function raw(){ return mode==='idb'? ((await tx('readonly',s=>s.getAll()))||[]) : lsRead(); }
   return {
     async init(){ try{ idb=await openIDB(); mode='idb'; }catch(e){ mode='ls'; } },
-    async all(){ return mode==='idb'? ((await tx('readonly',s=>s.getAll()))||[]) : lsRead(); },
+    async all(){ return (await raw()).filter(x=>x.kind!=='roster'); },       // kuis
+    async rosters(){ return (await raw()).filter(x=>x.kind==='roster'); },   // daftar nama
     async put(q){
       if(mode==='idb'){ await tx('readwrite',s=>s.put(q)); }
       else{ const a=lsRead(); const i=a.findIndex(x=>x.id===q.id); if(i>=0)a[i]=q; else a.push(q); lsWrite(a); }
@@ -792,9 +866,9 @@ function renderLib(){
       <div class="meta">${x.questions.length} soal${nImg?' · '+nImg+' bergambar':''}${d?' · diubah '+d:''}</div>
       <div class="libact">
         <button class="mini play" data-act="play">▶ Mainkan</button>
-        <button class="mini" data-act="edit">✏️ Edit</button>
-        <button class="mini" data-act="dup">⧉ Salin</button>
-        <button class="mini" data-act="exp">⬇ Ekspor</button>
+        <button class="mini" data-act="edit">Edit</button>
+        <button class="mini" data-act="dup">Salin</button>
+        <button class="mini" data-act="exp">Ekspor</button>
         <button class="mini danger" data-act="del">🗑</button>
       </div></div>`;
   }).join('');
@@ -823,29 +897,155 @@ $('btnNewQuiz').onclick=()=>{
   const now=Date.now();
   openEditor({id:uid(),title:'Kuis Baru',subject:libFilterVal&&libFilterVal!=='Tanpa mapel'?libFilterVal:'',questions:[blankQ()],created:now,updated:now},true);
 };
-$('btnBackupAll').onclick=()=>{
-  if(!LIB.length){toast('Perpustakaan masih kosong.');return;}
+$('btnBackupAll').onclick=async()=>{
+  let R=[]; try{ R=await Store.rosters(); }catch(e){}
+  if(!LIB.length&&!R.length){toast('Perpustakaan masih kosong.');return;}
   const d=new Date().toISOString().slice(0,10);
-  download(new Blob([JSON.stringify({app:'kuiskelas',version:2,quizzes:LIB},null,1)],{type:'application/json'}),'cadangan-kuis-'+d+'.json');
+  download(new Blob([JSON.stringify({app:'kuiskelas',version:3,quizzes:LIB,rosters:R},null,1)],{type:'application/json'}),'cadangan-kuis-'+d+'.json');
 };
 $('btnImportLib').onclick=()=>$('fileImportLib').click();
+// Impor satu file JSON: kuis, daftar nama, atau file cadangan (keduanya)
+async function importJsonFile(f){
+  const r={q:0,r:0,bad:0};
+  const x=JSON.parse(await f.text());
+  const items=Array.isArray(x)?x:(x&&Array.isArray(x.quizzes)?x.quizzes:(x&&Array.isArray(x.questions)?[x]:[]));
+  const rost=(x&&x.kind==='roster')?[x]:(x&&Array.isArray(x.rosters)?x.rosters:[]);
+  if(!items.length&&!rost.length)throw 0;
+  for(const it of items){
+    if(!it||!Array.isArray(it.questions)||!it.questions.length){r.bad++;continue;}
+    const q=normQuiz(it); await Store.put(q); LIB.push(q); r.q++;
+  }
+  for(const it of rost){
+    const n=normRoster(it); if(!n.names.length){r.bad++;continue;}
+    await Store.put(n); ROSTERS.push(n); r.r++;
+  }
+  return r;
+}
 $('fileImportLib').onchange=async e=>{
+  const files=[...e.target.files]; e.target.value=''; let q=0, r=0, bad=0;
+  for(const f of files){
+    try{ const x=await importJsonFile(f); q+=x.q; r+=x.r; bad+=x.bad; }catch(err){ bad++; }
+  }
+  renderLib();
+  toast((q||r)?('Berhasil mengimpor '+q+' kuis'+(r?' dan '+r+' daftar nama':'')+(bad?' ('+bad+' gagal)':'')+'.'):'File tidak valid. Gunakan file hasil Ekspor/Cadangkan.');
+};
+$('btnLibHome').onclick=()=>show('s-home');
+
+/* =====================================================
+   DAFTAR NAMA SISWA
+   ===================================================== */
+let ROSTERS=[]; let curR=null;
+const rid=()=>'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const HEADER_WORDS=['nama','name','nama siswa','no','no.','nomor'];
+function parseNames(text,csv){
+  const out=[], seen=new Set(); let dup=0, cut=0, over=0;
+  String(text||'').split(/\r?\n/).forEach((line,idx)=>{
+    let t=line;
+    if(csv&&/[;,\t]/.test(t)){
+      const c=t.split(/[;,\t]/).map(x=>x.replace(/^["']|["']$/g,'').trim());
+      t=(/^\d+$/.test(c[0])&&c[1])?c[1]:c[0];
+    }
+    t=t.replace(/^\s*\d+\s*[.)\-:]\s+/,'').replace(/\s+/g,' ').trim();
+    if(!t)return;
+    if(csv&&idx===0&&HEADER_WORDS.includes(t.toLowerCase()))return;      // baris judul kolom
+    if(t.length>30){ t=t.slice(0,30).trim(); cut++; }
+    const k=t.toLowerCase();
+    if(seen.has(k)){ dup++; return; }
+    if(out.length>=200){ over++; return; }
+    seen.add(k); out.push(t);
+  });
+  return {names:out,dup,cut,over};
+}
+function normRoster(x){
+  const now=Date.now(); x=x||{};
+  const p=parseNames(Array.isArray(x.names)?x.names.join('\n'):String(x.names||''));
+  return {id:rid(),kind:'roster',title:String(x.title||'Daftar nama').slice(0,60),names:p.names,created:now,updated:now};
+}
+async function loadRosters(){
+  try{ ROSTERS=await Store.rosters(); }catch(e){ ROSTERS=[]; toast('Gagal membaca daftar nama.'); }
+  return ROSTERS;
+}
+async function openRosters(){ await loadRosters(); renderRosters(); show('s-roster'); }
+function renderRosters(){
+  const list=ROSTERS.slice().sort((a,b)=>(b.updated||0)-(a.updated||0));
+  if(!list.length){
+    $('rosterList').innerHTML='<div class="empty" style="grid-column:1/-1">Belum ada daftar nama. Klik <b>+ Daftar Baru</b> atau <b>⬆ Impor</b>.</div>'; return;
+  }
+  $('rosterList').innerHTML=list.map(r=>`<div class="libcard" data-id="${esc(r.id)}">
+      <div><span class="badge">${r.names.length} nama</span></div>
+      <h3>${esc(r.title)}</h3>
+      <div class="meta">${esc(r.names.slice(0,4).join(', '))}${r.names.length>4?', …':''}</div>
+      <div class="libact">
+        <button class="mini play" data-act="edit">Edit</button>
+        <button class="mini" data-act="dup">Salin</button>
+        <button class="mini" data-act="exp">Ekspor</button>
+        <button class="mini danger" data-act="del">🗑</button>
+      </div></div>`).join('');
+}
+$('rosterList').addEventListener('click',async e=>{
+  const b=e.target.closest('button[data-act]'); if(!b)return;
+  const id=b.closest('.libcard').dataset.id; const r=ROSTERS.find(x=>x.id===id); if(!r)return;
+  const act=b.dataset.act;
+  if(act==='edit')openRosterEditor(clone(r));
+  else if(act==='dup'){
+    const c=clone(r); c.id=rid(); c.title=(c.title+' (salinan)').slice(0,60); c.created=c.updated=Date.now();
+    try{ await Store.put(c); ROSTERS.push(c); renderRosters(); toast('Daftar disalin.'); }catch(err){ toast('Gagal menyalin.'); }
+  }else if(act==='exp'){
+    download(new Blob([JSON.stringify(r,null,1)],{type:'application/json'}),'daftar-'+fname(r.title)+'.json');
+  }else if(act==='del'){
+    if(confirm('Hapus daftar "'+r.title+'"? Tindakan ini tidak bisa dibatalkan.')){
+      try{ await Store.del(id); ROSTERS=ROSTERS.filter(x=>x.id!==id); renderRosters(); toast('Daftar dihapus.'); }catch(err){ toast('Gagal menghapus.'); }
+    }
+  }
+});
+$('btnNewRoster').onclick=()=>{ const now=Date.now(); openRosterEditor({id:rid(),kind:'roster',title:'',names:[],created:now,updated:now}); };
+$('btnRosterBack').onclick=()=>openLibrary();
+$('btnRosters').onclick=()=>openRosters();
+$('btnImportRoster').onclick=()=>$('fileImportRoster').click();
+$('fileImportRoster').onchange=async e=>{
   const files=[...e.target.files]; e.target.value=''; let n=0, bad=0;
   for(const f of files){
     try{
-      const x=JSON.parse(await f.text());
-      const items=Array.isArray(x)?x:(Array.isArray(x.quizzes)?x.quizzes:(Array.isArray(x.questions)?[x]:null));
-      if(!items)throw 0;
-      for(const it of items){
-        if(!it||!Array.isArray(it.questions)||!it.questions.length){bad++;continue;}
-        const q=normQuiz(it); await Store.put(q); LIB.push(q); n++;
+      if(/\.json$/i.test(f.name)){ const x=await importJsonFile(f); n+=x.r; bad+=x.bad; }
+      else{
+        const p=parseNames(await f.text(),true); if(!p.names.length){ bad++; continue; }
+        const now=Date.now();
+        const r={id:rid(),kind:'roster',title:(f.name.replace(/\.[^.]+$/,'').slice(0,60))||'Daftar nama',names:p.names,created:now,updated:now};
+        await Store.put(r); ROSTERS.push(r); n++;
       }
     }catch(err){ bad++; }
   }
-  renderLib();
-  toast(n?('Berhasil mengimpor '+n+' kuis'+(bad?' ('+bad+' gagal)':'')+'.'):'File tidak valid. Gunakan file hasil Ekspor/Cadangkan.');
+  renderRosters();
+  toast(n?('Berhasil mengimpor '+n+' daftar nama'+(bad?' ('+bad+' gagal)':'')+'.'):'File tidak valid atau kosong.');
 };
-$('btnLibHome').onclick=()=>show('s-home');
+function updateRInfo(){
+  const p=parseNames($('rNames').value);
+  $('rInfo').textContent=p.names.length+' nama'+(p.dup?' · '+p.dup+' nama ganda diabaikan':'')+(p.cut?' · '+p.cut+' nama dipotong 30 karakter':'')+(p.over?' · '+p.over+' nama melebihi batas 200':'');
+}
+function openRosterEditor(r){
+  curR=r; $('rTitle').value=r.title; $('rNames').value=r.names.join('\n'); updateRInfo(); show('s-redit');
+}
+$('rNames').addEventListener('input',updateRInfo);
+$('fileRNames').onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=''; if(!f)return;
+  try{
+    const p=parseNames(await f.text(),true), cur0=$('rNames').value.trim();
+    $('rNames').value=(cur0?cur0+'\n':'')+p.names.join('\n');
+    if(!$('rTitle').value.trim())$('rTitle').value=f.name.replace(/\.[^.]+$/,'').slice(0,60);
+    updateRInfo();
+  }catch(err){ toast('File tidak bisa dibaca.'); }
+};
+$('btnRSave').onclick=async()=>{
+  if(!curR)return;
+  const title=$('rTitle').value.trim(), p=parseNames($('rNames').value);
+  if(!title){ alert('Isi nama daftar terlebih dahulu (mis. kelas VII-A).'); return; }
+  if(!p.names.length){ alert('Isi minimal satu nama siswa.'); return; }
+  curR.title=title.slice(0,60); curR.names=p.names; curR.updated=Date.now();
+  try{ await Store.put(curR); toast('Daftar nama tersimpan.'); openRosters(); }
+  catch(err){ toast('Gagal menyimpan daftar nama.'); }
+};
+$('btnRCancel').onclick=()=>openRosters();
+
 
 /* =====================================================
    EDITOR
@@ -979,8 +1179,28 @@ function openSetup(q){
   $('suN').value=String([2,3,4,5,6].includes(+last.nteams)?+last.nteams:4);
   $('suShuffle').checked=!!last.shuffle;
   $('suShuffleOpts').checked=!!last.shuffleOpts;
-  syncSetup(); show('s-setup');
+  syncSetup(); show('s-setup'); refreshRosterSetup(last);
 }
+async function refreshRosterSetup(last){
+  await loadRosters();
+  const sel=$('suRosterList'), has=ROSTERS.length>0;
+  const list=ROSTERS.slice().sort((a,b)=>a.title.localeCompare(b.title,'id'));
+  sel.innerHTML=list.map(r=>`<option value="${esc(r.id)}">${esc(r.title)} (${r.names.length} nama)</option>`).join('');
+  if(last&&last.rosterId&&list.some(r=>r.id===last.rosterId))sel.value=last.rosterId;
+  $('suRoster').disabled=!has;
+  $('suRoster').checked=has&&!!(last&&last.roster);
+  $('suRosterNone').style.display=has?'none':'';
+  syncRosterSetup();
+}
+function syncRosterSetup(){
+  const on=$('suRoster').checked&&!$('suRoster').disabled;
+  $('suRosterOpt').style.display=on?'':'none';
+  const r=ROSTERS.find(x=>x.id===$('suRosterList').value);
+  $('suRosterInfo').textContent=(on&&r)?'Siswa harus memilih salah satu dari '+r.names.length+' nama ini. Siswa yang belum masuk akan terlihat di lobby.':'';
+}
+$('suRoster').addEventListener('change',syncRosterSetup);
+$('suRosterList').addEventListener('change',syncRosterSetup);
+$('lnkMakeRoster').onclick=e=>{ e.preventDefault(); openRosters(); };
 function syncSetup(){
   const m=document.querySelector('input[name=gm]:checked').value;
   $('suTeamOpt').style.display=(m==='solo')?'none':'block';
@@ -988,7 +1208,8 @@ function syncSetup(){
 document.querySelectorAll('input[name=gm]').forEach(r=>r.addEventListener('change',syncSetup));
 $('btnSetupBack').onclick=()=>openLibrary();
 function readSetup(){
-  const cfg={mode:document.querySelector('input[name=gm]:checked').value,nteams:+$('suN').value,shuffle:$('suShuffle').checked,shuffleOpts:$('suShuffleOpts').checked};
+  const cfg={mode:document.querySelector('input[name=gm]:checked').value,nteams:+$('suN').value,shuffle:$('suShuffle').checked,shuffleOpts:$('suShuffleOpts').checked,
+    roster:$('suRoster').checked&&!$('suRoster').disabled,rosterId:$('suRosterList').value||''};
   try{ localStorage.setItem('kuiskelas_cfg',JSON.stringify(cfg)); }catch(e){}
   return cfg;
 }
@@ -1046,7 +1267,7 @@ $('btnLaunch').onclick=()=>hostStart();
      games/{pin}/presence/{pid}  true         penanda siswa online
      games/{pin}/img/{index}     data URL gambar soal
    ===================================================== */
-const H={prev:new Map(),scTok:0,sid:0,pin:'',base:'',ready:false,conns:{},inRef:null,presRef:null,vals:[],cloud:new Map(),hidden:new Set(),
+const H={roster:null,takenT:0,prev:new Map(),scTok:0,sid:0,pin:'',base:'',ready:false,conns:{},inRef:null,presRef:null,vals:[],cloud:new Map(),hidden:new Set(),
   players:new Map(),qs:[],i:-1,phase:'idle',qStart:0,tick:null,counts:[],cfg:{mode:'solo',nteams:4,shuffle:false}};
 const isTeam=()=>H.cfg.mode!=='solo';
 const nScored=()=>H.qs.filter(isScored).length;
@@ -1055,9 +1276,16 @@ function joinLink(){ return location.href.split('#')[0].split('?')[0]+'?pin='+H.
 function hostStart(){
   if(!FB_OK||!auth||!db){ alert(FB_MSG); return; }
   const cfg=readSetup(); const p=prepare(playQuiz,cfg); if(p.error){alert(p.error);return;}
+  let roster=null;
+  if(cfg.roster){
+    const r=ROSTERS.find(x=>x.id===cfg.rosterId);
+    if(!r||!r.names.length){ alert('Daftar nama tidak ditemukan atau kosong. Pilih daftar lain atau nonaktifkan opsi daftar nama.'); return; }
+    roster=r.names.slice();
+  }
+  H.roster=roster;
   H.cfg=cfg; H.qs=p.questions; H.players.clear(); H.i=-1; H.phase='lobby'; H.sid++;
   $('hTitle').textContent=playQuiz.title+(playQuiz.subject?' · '+playQuiz.subject:'');
-  $('hMode').textContent=cfg.mode==='solo'?'👤 Individu':(cfg.mode==='auto'?'👥 '+cfg.nteams+' tim · acak':'🚩 '+cfg.nteams+' tim · pilih sendiri');
+  $('hMode').textContent=(cfg.mode==='solo'?'Individu':(cfg.mode==='auto'?''+cfg.nteams+' tim · acak':''+cfg.nteams+' tim · pilih sendiri'))+(roster?' ·daftar nama':'');
   $('btnShuffleTeams').style.display=isTeam()?'':'none';
   $('hPin').textContent='······'; $('hLink').textContent='…';
   $('hStatus').textContent='Menyiapkan game…';
@@ -1080,10 +1308,18 @@ function openGame(){
 async function tryPin(n,sid){
   const pin=String(Math.floor(100000+Math.random()*900000));
   const me=auth.currentUser.uid;
-  const r=await db.ref('games/'+pin+'/meta').transaction(c=>c===null?{host:me,created:Date.now()}:undefined);
+  const r=await db.ref('games/'+pin+'/meta').transaction(c=>c===null?{host:me,created:Date.now(),roster:H.roster?H.roster.length:0}:undefined);
   if(!r.committed){ if(n<5) return tryPin(n+1,sid); throw new Error('Gagal mendapat PIN unik'); }
   if(sid!==H.sid||H.phase==='idle'){ db.ref('games/'+pin).remove().catch(()=>{}); return; }   // dibatalkan saat menunggu
   H.pin=pin; H.base='games/'+pin;
+  if(H.roster){
+    // daftar nama ditulis SEBELUM PIN ditampilkan, supaya siswa tidak pernah melihat game tanpa daftarnya
+    const base='games/'+pin;
+    try{ await db.ref(base+'/roster').set(H.roster); }
+    catch(e){ db.ref(base).remove().catch(()=>{}); throw e; }
+    if(sid!==H.sid||H.phase==='idle'){ db.ref(base).remove().catch(()=>{}); return; }
+    db.ref(base+'/roster').once('value').catch(()=>{ $('hStatus').textContent='⚠ Rules Firebase belum mengizinkan siswa membaca daftar nama. Tambahkan aturan "roster" dan "taken" (lihat database.rules.json), lalu Publish.'; });
+  }
   // gambar ditulis sekali; siswa mengambilnya sesuai kebutuhan
   H.qs.forEach((q,i)=>{ if(q.img) db.ref(H.base+'/img/'+i).set(q.img).catch(e=>console.error('img',e)); });
   H.inRef=db.ref(H.base+'/in');
@@ -1103,7 +1339,8 @@ async function tryPin(n,sid){
   });
   H.presRef.on('child_removed',s=>{ const c=H.conns[s.key]; if(c)connClosed(c); });
   H.ready=true;
-  $('hPin').textContent=pin; $('hLink').textContent=joinLink(); $('hStatus').textContent=''; renderLobby();
+  $('hPin').textContent=pin; document.querySelectorAll('.pinval').forEach(e=>{ e.textContent=pin; });
+  $('hLink').textContent=joinLink(); $('hStatus').textContent=''; renderLobby();
 }
 function getConn(pid){
   return H.conns[pid]||(H.conns[pid]={
@@ -1165,7 +1402,12 @@ function joinedMsg(p){
 function onHostMsg(conn,m){
   if(!m||typeof m!=='object')return;
   if(m.t==='join'){
-    const name=String(m.name||'').trim().slice(0,20);
+    let name;
+    if(H.roster){      // mode daftar nama: nama HARUS dari daftar (dicocokkan lewat nomor urut)
+      const ri=parseInt(m.ri);
+      if(!(ri>=0&&ri<H.roster.length)){send(conn,{t:'error',msg:'Pilih namamu dari daftar.'});return;}
+      name=H.roster[ri];
+    }else name=String(m.name||'').trim().slice(0,20);
     if(!name){send(conn,{t:'error',msg:'Nama tidak boleh kosong.'});return;}
     const key=name.toLowerCase(); let p=H.players.get(key);
     if(p){
@@ -1178,6 +1420,13 @@ function onHostMsg(conn,m){
       p={name,key,conn,connected:true,score:0,streak:0,right:0,ans:null,team:-1,av:pickAvatar()};
       if(H.cfg.mode==='auto')p.team=smallestTeam();
       H.players.set(key,p); Snd.join();
+    }
+    // Perangkat yang sama masuk dengan identitas lain (mis. keluar lalu gabung dengan nama berbeda):
+    // lepaskan identitas lamanya, supaya tidak muncul "pemain hantu" di daftar guru.
+    const prev=conn._p;
+    if(prev&&prev!==p&&prev.conn===conn&&H.players.get(prev.key)===prev){
+      if(H.phase==='lobby')H.players.delete(prev.key);
+      else{ prev.connected=false; prev.conn=null; }     // skor tetap tersimpan, bisa disambung lagi dengan nama itu
     }
     conn._p=p; send(conn,joinedMsg(p));
     syncPlayer(p); updateHost();
@@ -1283,7 +1532,27 @@ function syncPlayer(p){
     send(p.conn,endMsg(p,ranking(),teamStats()));
   }
 }
+// Menandai nama yang sedang dipakai agar siswa lain melihatnya nonaktif di layar pilih nama
+function scheduleTaken(){
+  if(!H.roster||!H.base)return;
+  clearTimeout(H.takenT);
+  H.takenT=setTimeout(()=>{
+    if(!H.roster||!H.base)return;
+    const o={};
+    H.roster.forEach((n,i)=>{ const p=H.players.get(n.toLowerCase()); if(p&&p.connected)o['i'+i]=true; });
+    db.ref(H.base+'/taken').set(Object.keys(o).length?o:null).catch(e=>console.error('taken',e));
+  },150);
+}
+function renderAbsent(){
+  const el=$('hAbsent');
+  if(!H.roster){ el.innerHTML=''; return; }
+  const absent=H.roster.filter(n=>{ const p=H.players.get(n.toLowerCase()); return !(p&&p.connected); });
+  el.innerHTML=absent.length
+    ?`<div class="muted" style="margin-top:12px">Belum masuk (${absent.length}):</div><div class="chips absent">${absent.map(n=>`<span class="chip off">${esc(n)}</span>`).join('')}</div>`
+    :'<div class="muted" style="margin-top:12px">✅ Semua siswa dalam daftar sudah masuk.</div>';
+}
 function updateHost(){
+  scheduleTaken();
   if(H.phase==='lobby')renderLobby();
   else if(H.phase==='question'){
     renderAnswered();
@@ -1293,7 +1562,8 @@ function updateHost(){
 function chipHtml(p){ return `<button class="chip ${p.connected?'':'off'}" data-k="${esc(p.key)}">${avHtml(p)}${esc(p.name)}</button>`; }
 function renderLobby(){
   const list=[...H.players.values()];
-  $('hCount').textContent=list.filter(p=>p.connected).length;
+  const nOn=list.filter(p=>p.connected).length;
+  $('hCount').textContent=H.roster?nOn+' dari '+H.roster.length:nOn;
   let html;
   if(!isTeam()){
     html='<div class="chips">'+(list.map(chipHtml).join('')||'<span class="muted">Menunggu siswa bergabung…</span>')+'</div>';
@@ -1310,6 +1580,7 @@ function renderLobby(){
   }
   $('hPlayers').innerHTML=html;
   $('btnStart').disabled=!list.some(p=>p.connected)||!H.ready;
+  renderAbsent(); scheduleTaken();
 }
 $('hPlayers').addEventListener('click',e=>{
   const b=e.target.closest('.chip'); if(!b||H.phase!=='lobby')return;
@@ -1540,7 +1811,7 @@ function stopHost(toLib){
   const b=H.base;
   detachHost();
   if(b&&db){ db.ref(b).remove().catch(e=>console.error('hapus game',e)); }
-  H.base=''; H.pin='';
+  H.base=''; H.pin=''; clearTimeout(H.takenT); H.roster=null;
   H.players.clear(); H.phase='idle'; window.onbeforeunload=null;
   if(toLib)openLibrary(); else show('s-home');
 }
@@ -1550,29 +1821,35 @@ function stopHost(toLib){
    ===================================================== */
 const P={conn:null,base:'',outRef:null,connRef:null,presRef:null,wasOff:false,fetching:{},
   name:'',pin:'',joined:false,ended:false,timer:null,to:null,deadline:0,dur:0,answered:false,
-  mode:'solo',teams:[],team:-1,imgs:{},curQ:-1,hasImg:false,av:0};
+  mode:'solo',teams:[],team:-1,imgs:{},curQ:-1,hasImg:false,av:0,
+  rosterNames:null,rosterPick:null,pickIdx:-1,taken:new Set(),takenRef:null,probeTok:0,probeP:null,probePin:'',probeErr:''};
 
-function setErr(m){ $('joinErr').textContent=m; $('discErr').textContent=m; }
+function setErr(m){ $('joinErr').textContent=m; $('discErr').textContent=m; $('pickErr').textContent=m; }
 function cleanupPlayer(){
   clearInterval(P.timer); clearTimeout(P.to);
   if(P.outRef){ try{P.outRef.off();}catch(e){} P.outRef=null; }
   if(P.connRef){ try{P.connRef.off();}catch(e){} P.connRef=null; }
   if(P.presRef){ try{P.presRef.remove().catch(()=>{});}catch(e){} P.presRef=null; }
+  if(P.takenRef){ try{P.takenRef.off();}catch(e){} P.takenRef=null; }
   P.conn=null; P.wasOff=false; $('connOff').classList.remove('on');
 }
-function resetJoinBtn(){ $('btnJoin').disabled=false; $('btnJoin').textContent='Gabung'; }
+function resetJoinBtn(){
+  $('btnJoin').disabled=false; $('btnJoin').textContent=P.rosterNames?'Pilih Nama ▶':'Gabung';
+  renderPicker();
+}
 
 function playerJoin(){
-  const pin=$('inPin').value.trim(), name=$('inName').value.trim();
+  const pin=$('inPin').value.trim(), rp=P.rosterNames?P.rosterPick:null, name=rp?rp.name:$('inName').value.trim();
   if(!/^\d{6}$/.test(pin)){setErr('PIN harus 6 angka.');return;}
-  if(!name){setErr('Tulis namamu dulu.');return;}
+  if(!name){setErr(P.rosterNames?'Pilih namamu dulu.':'Tulis namamu dulu.');return;}
   if(!FB_OK||!auth||!db){setErr(FB_MSG);return;}
   setErr(''); $('btnJoin').disabled=true; $('btnJoin').textContent='Menghubungkan…';
+  $('btnPickGo').disabled=true; $('btnPickGo').textContent='Menghubungkan…';
   cleanupPlayer(); P.pin=pin;P.name=name;P.ended=false; P.imgs={}; P.fetching={};
   const wasJoined=P.joined; P.joined=false;
   const fail=msg=>{
     cleanupPlayer(); resetJoinBtn(); setErr(msg);
-    if(wasJoined){ show('s-pdisc'); } else show('s-home');
+    if(wasJoined){ show('s-pdisc'); } else if(P.rosterNames){ openPicker(); } else show('s-home');
   };
   P.fail=fail;
   fbReady().then(async()=>{
@@ -1595,9 +1872,51 @@ function playerJoin(){
     P.outRef=db.ref(base+'/out/'+me);
     P.outRef.on('child_added',s=>{ const m=s.val(); s.ref.remove().catch(()=>{}); onPlayerMsg(m); });
     P.to=setTimeout(()=>{ if(!P.joined)fail('Guru tidak merespons. Periksa PIN dan koneksimu.'); },12000);
-    P.conn.send({t:'join',name});
+    P.conn.send(rp?{t:'join',name,ri:rp.ri}:{t:'join',name});
   }).catch(e=>fail('Gagal terhubung ('+(e.code||e.message)+').'));
 }
+/* ----- layar pilih nama (mode daftar nama) ----- */
+function renderPicker(){
+  if(!P.rosterNames)return;
+  const q=$('pickSearch').value.trim().toLowerCase();
+  const items=P.rosterNames.map((n,i)=>({n,i})).filter(x=>!q||x.n.toLowerCase().includes(q)).sort((a,b)=>a.n.localeCompare(b.n,'id'));
+  $('pickGrid').innerHTML=items.map(x=>{
+    const tk=P.taken.has(x.i);
+    return `<button type="button" class="pk ${P.pickIdx===x.i?'sel':''}" data-i="${x.i}" ${tk?'disabled':''}>${esc(x.n)}${tk?'<small>✓ sudah masuk</small>':''}</button>`;
+  }).join('')||'<div style="grid-column:1/-1;color:#6b6b80;padding:6px">Nama tidak ditemukan. Tanyakan pada gurumu.</div>';
+  const ok=P.pickIdx>=0&&!P.taken.has(P.pickIdx);
+  $('btnPickGo').disabled=!ok;
+  $('btnPickGo').textContent=ok?'Masuk sebagai '+P.rosterNames[P.pickIdx]:'Pilih namamu';
+}
+function openPicker(){
+  P.pin=$('inPin').value.trim();
+  if(P.takenRef){ try{P.takenRef.off();}catch(e){} P.takenRef=null; }
+  P.taken=new Set();
+  if(db){
+    P.takenRef=db.ref('games/'+P.pin+'/taken');
+    P.takenRef.on('value',s=>{
+      const v=s.val()||{};
+      P.taken=new Set(Object.keys(v).map(k=>+k.slice(1)));
+      if(P.pickIdx>=0&&P.taken.has(P.pickIdx))P.pickIdx=-1;
+      if($('s-pick').classList.contains('active'))renderPicker();
+    },()=>{});
+  }
+  $('pickSearch').value=''; renderPicker(); show('s-pick');
+}
+$('pickGrid').addEventListener('click',e=>{
+  const b=e.target.closest('.pk'); if(!b||b.disabled)return;
+  P.pickIdx=+b.dataset.i; renderPicker(); Snd.click();
+});
+$('pickSearch').addEventListener('input',renderPicker);
+$('btnPickGo').onclick=()=>{
+  if(P.pickIdx<0||!P.rosterNames)return;
+  P.rosterPick={ri:P.pickIdx,name:P.rosterNames[P.pickIdx]};
+  playerJoin();
+};
+$('btnPickBack').onclick=()=>{
+  if(P.takenRef){ try{P.takenRef.off();}catch(e){} P.takenRef=null; }
+  setErr(''); show('s-home');
+};
 function renderAvatars(){
   $('pAvBox').innerHTML=`<div class="avbig">${AV[P.av]||'🙂'}</div><div class="muted" style="margin-bottom:8px">Pilih karakter:</div>`+
     `<div class="avgrid">${AV.map((a,i)=>`<button type="button" data-av="${i}" class="${P.av===i?'sel':''}" aria-label="Karakter ${i+1}">${a}</button>`).join('')}</div>`;
@@ -1775,11 +2094,57 @@ function showEnd(m){
   if(m.tn){ tb.style.display=''; tb.style.background=m.tc; tb.textContent=teamLine(m,true); } else tb.style.display='none';
   show('s-pend');
 }
-$('btnJoin').onclick=playerJoin;
-$('inName').addEventListener('keydown',e=>{ if(e.key==='Enter')playerJoin(); });
-$('inPin').addEventListener('keydown',e=>{ if(e.key==='Enter')$('inName').focus(); });
+/* ----- beranda: deteksi apakah game memakai daftar nama ----- */
+function setHomeMode(names){
+  P.rosterNames=names||null;
+  $('inName').style.display=names?'none':'';
+  $('rosterHint').style.display=names?'':'none';
+  if(!$('btnJoin').disabled)$('btnJoin').textContent=names?'Pilih Nama ▶':'Gabung';
+}
+function probePin(pin){
+  const tok=++P.probeTok; P.probePin=pin; P.probeErr='';
+  P.probeP=(async()=>{
+    try{
+      await fbReady();
+      const meta=await db.ref('games/'+pin+'/meta').once('value');
+      if(tok!==P.probeTok)return;
+      const mv=meta.exists()?meta.val():null;
+      if(mv&&mv.roster>0){
+        let names=null;
+        try{ names=(await db.ref('games/'+pin+'/roster').once('value')).val(); }catch(e){ names=null; }
+        if(tok!==P.probeTok)return;
+        if(!Array.isArray(names)||!names.length){
+          P.probeErr='Guru memakai daftar nama, tetapi daftarnya tidak dapat dibaca. Minta guru memperbarui Rules Firebase.';
+          setHomeMode(null); setErr(P.probeErr); return;
+        }
+        setHomeMode(names);
+      }else setHomeMode(null);
+    }catch(e){ if(tok===P.probeTok)setHomeMode(null); }     // PIN salah / offline: biarkan alur biasa menampilkan pesannya
+  })();
+  return P.probeP;
+}
+function onPinInput(){
+  const pin=$('inPin').value.trim();
+  P.probeTok++; P.probePin=''; P.probeP=null; P.probeErr=''; P.rosterPick=null; P.pickIdx=-1;
+  setHomeMode(null);
+  if(/^\d{6}$/.test(pin)&&FB_OK)probePin(pin);
+}
+$('inPin').addEventListener('input',onPinInput);
+$('btnJoin').onclick=async()=>{
+  const pin=$('inPin').value.trim();
+  if(/^\d{6}$/.test(pin)&&FB_OK&&P.probePin!==pin)onPinInput();
+  if(P.probeP){ $('btnJoin').disabled=true; try{ await P.probeP; }catch(e){} $('btnJoin').disabled=false; }
+  if(P.probeErr){ setErr(P.probeErr); return; }
+  if(P.rosterNames)openPicker(); else playerJoin();
+};
+$('inName').addEventListener('keydown',e=>{ if(e.key==='Enter')$('btnJoin').click(); });
+$('inPin').addEventListener('keydown',e=>{ if(e.key==='Enter'){ if($('inName').style.display==='none')$('btnJoin').click(); else $('inName').focus(); } });
 $('btnRejoin').onclick=()=>{ $('inPin').value=P.pin; $('inName').value=P.name; setErr(''); playerJoin(); };
-$('btnPlayAgain').onclick=()=>{ cleanupPlayer(); P.joined=false; P.ended=false; $('inPin').value=''; setErr(''); show('s-home'); };
+$('btnPlayAgain').onclick=()=>{
+  cleanupPlayer(); P.joined=false; P.ended=false; $('inPin').value=''; setErr('');
+  P.probeTok++; P.probePin=''; P.probeP=null; P.rosterPick=null; P.pickIdx=-1; setHomeMode(null);
+  show('s-home');
+};
 
 /* =====================================================
    NAVIGASI AWAL
@@ -1816,7 +2181,7 @@ syncSnd();
 document.addEventListener('pointerdown',()=>Snd.unlock(),{passive:true});
 (function(){
   const pin=new URLSearchParams(location.search).get('pin');
-  if(pin&&/^\d{6}$/.test(pin))$('inPin').value=pin;
+  if(pin&&/^\d{6}$/.test(pin)){ $('inPin').value=pin; onPinInput(); }
 })();
 </script>
 </body>
