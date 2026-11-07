@@ -566,7 +566,8 @@
                 "PJOK",
                 "Informatika",
                 "Seni Budaya / Prakarya",
-                "koding dan KA"
+                "koding dan KA",
+                "BK"
             ];
 
             const EXAM_TYPES = [
@@ -700,10 +701,70 @@
                         </div>
                     </div>
                     <div class="${rowCls}"><span class="${lblCls}">Jenis</span>${guruTypeSelectHTML(u.username)}</div>
+                    <div class="${rowCls}"><span class="${lblCls}">Soal</span>
+                        <button type="button" role="switch" aria-checked="${u.can_create_questions !== false}" data-id="${escHtml(String(u.id))}" onclick="toggleGuruSoal(this.dataset.id)"
+                            title="${u.can_create_questions !== false ? 'Cabut izin membuat soal' : 'Beri izin membuat soal'}"
+                            class="relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors ${u.can_create_questions !== false ? 'bg-emerald-500' : 'bg-gray-300'}">
+                            <span class="inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${u.can_create_questions !== false ? 'translate-x-4' : 'translate-x-0.5'}"></span>
+                        </button>
+                        <span class="text-[11px] font-semibold ${u.can_create_questions !== false ? 'text-emerald-700' : 'text-gray-400'}">${u.can_create_questions !== false ? 'Boleh buat soal' : 'Tidak boleh'}</span>
+                    </div>
                     <div class="${rowCls}"><span class="${lblCls}">Ajar</span>
                         <button type="button" data-id="${escHtml(String(u.id))}" onclick="showGuruKelasAjar(this.dataset.id)" class="px-2.5 py-1.5 text-xs rounded-lg border border-violet-300 text-violet-700 bg-white hover:bg-violet-50 font-semibold">Kelas &amp; Mapel</button>
                     </div>
                 </div>`;
+            }
+            function showSoalColumnHelp() {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Aktifkan fitur izin membuat soal',
+                    html: '<div style="text-align:left;font-size:13px;line-height:1.5"><p>Jalankan file <b>tahap5-izin-soal.sql</b> sekali di Supabase (menu <b>SQL Editor</b>), lalu muat ulang halaman ini.</p></div>'
+                });
+            }
+            async function toggleGuruSoal(id) {
+                const u = allUsers.find(x => String(x.id) === String(id));
+                if (!u) return;
+                const baru = !(u.can_create_questions !== false);
+                try {
+                    showLoading();
+                    const { error } = await dbClient.from('users').update({ can_create_questions: baru }).eq('id', u.id);
+                    if (error) throw error;
+                    u.can_create_questions = baru;
+                    showToast(baru ? `${u.name} boleh membuat soal` : `${u.name} tidak boleh membuat soal`, 'success');
+                } catch (err) {
+                    console.error('Gagal mengubah izin membuat soal:', err);
+                    if (/can_create_questions/i.test(String((err && err.message) || ''))) showSoalColumnHelp();
+                    else showToast('Gagal menyimpan: ' + ((err && err.message) || 'kesalahan database'), 'error');
+                } finally {
+                    hideLoading();
+                    renderUsersSection();
+                }
+            }
+            function showSoalColumnHelp() {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Aktifkan fitur izin membuat soal',
+                    html: '<div style="text-align:left;font-size:13px;line-height:1.5"><p>Jalankan file <b>tahap5-izin-soal.sql</b> sekali di Supabase (menu <b>SQL Editor</b>), lalu muat ulang halaman ini.</p></div>'
+                });
+            }
+            async function toggleGuruSoal(id) {
+                const u = allUsers.find(x => String(x.id) === String(id));
+                if (!u) return;
+                const baru = !(u.can_create_questions !== false);
+                try {
+                    showLoading();
+                    const { error } = await dbClient.from('users').update({ can_create_questions: baru }).eq('id', u.id);
+                    if (error) throw error;
+                    u.can_create_questions = baru;
+                    showToast(baru ? `${u.name} boleh membuat soal` : `${u.name} tidak boleh membuat soal`, 'success');
+                } catch (err) {
+                    console.error('Gagal mengubah izin membuat soal:', err);
+                    if (/can_create_questions/i.test(String((err && err.message) || ''))) showSoalColumnHelp();
+                    else showToast('Gagal menyimpan: ' + ((err && err.message) || 'kesalahan database'), 'error');
+                } finally {
+                    hideLoading();
+                    renderUsersSection();
+                }
             }
             async function updateGuruField(username, patch, okMsg) {
                 const u = allUsers.find(x => x.username === username);
@@ -1007,6 +1068,13 @@
             // Daftar pengguna untuk panel admin. Kolom is_active (aktivasi akun) dipakai jika sudah ada di database.
             async function fetchUsersList() {
                 const cols = 'id, username, name, role, class, subject, is_login';
+                try {
+                    const rows = await fetchAllRows('users', cols + ', is_active, can_create_questions');
+                    window.usersActiveColumnMissing = false;
+                    return rows;
+                } catch (err) {
+                    console.warn('Kolom is_active/can_create_questions belum lengkap, mencoba tanpa kolom izin soal:', err);
+                }
                 try {
                     const rows = await fetchAllRows('users', cols + ', is_active');
                     window.usersActiveColumnMissing = false;
@@ -5142,6 +5210,68 @@
                 return guruAssignCall('app_admin_set_wali', { p_guru: guruAssignCtx.guruId, p_kelas: kelas }, kelas ? `Wali kelas ${kelas} disimpan` : 'Status wali kelas dibatalkan');
             }
 
+            let guruIzinTimer = null;
+            function guruHentikanPantauIzin() {
+                if (guruIzinTimer) { clearInterval(guruIzinTimer); guruIzinTimer = null; }
+            }
+            function guruMulaiPantauIzin() {
+                if (guruIzinTimer) return;
+                guruIzinTimer = setInterval(async () => {
+                    const navQ = document.getElementById('nav-questions');
+                    // Menu Bank Soal sudah ditinggalkan (atau sudah logout): hentikan pemantauan
+                    if (!navQ || !navQ.classList.contains('font-semibold') || !currentUser || currentUser.role !== 'guru') {
+                        guruHentikanPantauIzin();
+                        return;
+                    }
+                    if (document.hidden) return;
+                    try {
+                        const { data, error } = await dbClient.from('users').select('can_create_questions').eq('id', currentUser.id).single();
+                        if (error || !data) return;
+                        const bolehKini = data.can_create_questions !== false;
+                        const bolehSebelumnya = currentUser.can_create_questions !== false;
+                        if (bolehKini !== bolehSebelumnya) guruBukaBankSoal(); // izin berubah: segarkan tampilan
+                    } catch (e) { /* abaikan; coba lagi pada putaran berikutnya */ }
+                }, 8000);
+            }
+            async function guruBukaBankSoal() {
+                const box = document.getElementById('guruContent');
+                if (box) box.innerHTML = '<div class="text-center py-12 text-gray-400">Memuat...</div>';
+                const izinSebelumnya = currentUser.can_create_questions;
+                let boleh = true;
+                try {
+                    const { data, error } = await dbClient.from('users').select('can_create_questions').eq('id', currentUser.id).single();
+                    if (!error && data) {
+                        boleh = data.can_create_questions !== false;
+                        currentUser.can_create_questions = boleh;
+                    }
+                } catch (e) { /* kolom belum ada atau gagal memuat: dianggap boleh */ }
+                // Pengguna sudah pindah ke menu lain selagi menunggu: jangan menimpa tampilannya
+                const navQ = document.getElementById('nav-questions');
+                if (navQ && !navQ.classList.contains('font-semibold')) return;
+                guruMulaiPantauIzin();
+                if (!boleh) {
+                    if (box) box.innerHTML = `
+                        <div class="bg-white rounded-2xl shadow-custom p-8 text-center max-w-xl mx-auto">
+                            <div class="text-4xl mb-3">🔒</div>
+                            <h3 class="font-bold text-lg text-gray-800">Anda tidak dapat membuat soal</h3>
+                            <p class="text-sm text-gray-500 mt-2">Anda tidak ditugaskan membuat soal oleh admin/panitia.</p>
+                        </div>`;
+                    return;
+                }
+                // Baru diberi izin (atau daftar soal masih kosong karena dimuat saat izin dicabut): muat ulang soalnya
+                if (izinSebelumnya === false || !allQuestions || allQuestions.length === 0) {
+                    try {
+                        allQuestions = (await fetchAllQuestions()) || [];
+                    } catch (err) {
+                        console.error('Gagal memuat soal guru:', err);
+                        if (isSessionError(err)) { handleSessionExpired(); return; }
+                        if (box) box.innerHTML = '<div class="text-center py-12 text-red-500">Gagal memuat soal. Periksa koneksi lalu buka kembali menu Bank Soal.</div>';
+                        return;
+                    }
+                }
+                renderQuestionsSection();
+            }
+
             function showAdminSection(section) {
                 currentAdminTab = section;
                 const { config, primaryColor } = RC;
@@ -5184,7 +5314,7 @@
                 activeBtn.classList.add('font-semibold');
                 
                 if (section === 'questions') {
-                    renderQuestionsSection();
+                    guruBukaBankSoal();
                 } else if (section === 'presensi') {
                     renderPresensiSection();
                 }
