@@ -566,8 +566,7 @@
                 "PJOK",
                 "Informatika",
                 "Seni Budaya / Prakarya",
-                "koding dan KA",
-                "BK"
+                "koding dan KA"
             ];
 
             const EXAM_TYPES = [
@@ -713,32 +712,6 @@
                         <button type="button" data-id="${escHtml(String(u.id))}" onclick="showGuruKelasAjar(this.dataset.id)" class="px-2.5 py-1.5 text-xs rounded-lg border border-violet-300 text-violet-700 bg-white hover:bg-violet-50 font-semibold">Kelas &amp; Mapel</button>
                     </div>
                 </div>`;
-            }
-            function showSoalColumnHelp() {
-                Swal.fire({
-                    icon: 'info',
-                    title: 'Aktifkan fitur izin membuat soal',
-                    html: '<div style="text-align:left;font-size:13px;line-height:1.5"><p>Jalankan file <b>tahap5-izin-soal.sql</b> sekali di Supabase (menu <b>SQL Editor</b>), lalu muat ulang halaman ini.</p></div>'
-                });
-            }
-            async function toggleGuruSoal(id) {
-                const u = allUsers.find(x => String(x.id) === String(id));
-                if (!u) return;
-                const baru = !(u.can_create_questions !== false);
-                try {
-                    showLoading();
-                    const { error } = await dbClient.from('users').update({ can_create_questions: baru }).eq('id', u.id);
-                    if (error) throw error;
-                    u.can_create_questions = baru;
-                    showToast(baru ? `${u.name} boleh membuat soal` : `${u.name} tidak boleh membuat soal`, 'success');
-                } catch (err) {
-                    console.error('Gagal mengubah izin membuat soal:', err);
-                    if (/can_create_questions/i.test(String((err && err.message) || ''))) showSoalColumnHelp();
-                    else showToast('Gagal menyimpan: ' + ((err && err.message) || 'kesalahan database'), 'error');
-                } finally {
-                    hideLoading();
-                    renderUsersSection();
-                }
             }
             function showSoalColumnHelp() {
                 Swal.fire({
@@ -2993,7 +2966,7 @@
             let autoSubmitByViolationRunning = false;
             const VIOLATION_DEBOUNCE_MS = 800; // cegah dobel hitung jika beberapa event tumpang tindih
 
-            function recordViolation() {
+            function recordViolation(type) {
                 const now = Date.now();
                 if (now - lastViolationTimestamp < VIOLATION_DEBOUNCE_MS) return;
                 lastViolationTimestamp = now;
@@ -3002,13 +2975,15 @@
                 localStorage.setItem('violationCount', violationCount.toString());
                 updateViolationDisplay();
                 const isLastViolation = violationCount >= MAX_VIOLATION_AUTOSUBMIT;
-                if (!isLastViolation) showViolationWarning();   // pelanggaran terakhir: langsung kumpul, tanpa popup peringatan
+                // pelanggaran terakhir: langsung kumpul, tanpa popup. Pelanggaran split screen memakai layar kunci (showSplitLock)
+                if (!isLastViolation && type !== 'split') showViolationWarning();
                 if (typeof laporKeAdmin === 'function') laporKeAdmin();
 
                 // Kumpul otomatis jika pelanggaran mencapai batas
                 if (violationCount >= MAX_VIOLATION_AUTOSUBMIT && !autoSubmitByViolationRunning) {
                     autoSubmitByViolationRunning = true;
                     document.querySelectorAll('.violation-warning-popup').forEach(el => el.remove());
+                    releaseSplitLock();
                     Swal.fire({
                         icon: 'error',
                         title: 'Batas Pelanggaran Tercapai',
@@ -3053,10 +3028,80 @@
                 if (document.hasFocus() && !document.hidden) focusLostActive = false;
             }
 
-            function checkSplitScreenViolation() {
+            // ===== LAYAR KUNCI SPLIT SCREEN =====
+            // Saat split screen / dua jendela terdeteksi, layar ujian DITUTUP oleh peringatan yang
+            // tidak bisa dilewati. Siswa wajib menekan tombol OKE (memicu mode layar penuh) dan layar
+            // harus benar-benar sudah penuh sebelum ujian bisa dilanjutkan.
+            let splitLockActive = false;
+            let splitLockAttempts = 0;
+            let splitLockTimer = null;
+
+            function isFullscreenNow() {
+                return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement);
+            }
+            function isFullscreenSupported() {
+                return !!(document.fullscreenEnabled || document.webkitFullscreenEnabled || document.mozFullScreenEnabled || document.msFullscreenEnabled);
+            }
+            function showSplitLock(counted) {
+                if (splitLockActive) return;
+                splitLockActive = true;
+                splitLockAttempts = 0;
+                if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+                const div = document.createElement('div');
+                div.id = 'splitLockOverlay';
+                div.className = 'split-lock-popup fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center';
+                div.style.zIndex = '99999';
+                div.innerHTML = `
+                    <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl">
+                        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
+                            <span class="text-5xl">⚠️</span>
+                        </div>
+                        <h2 class="text-2xl font-bold text-red-600 mb-3">PERINGATAN!</h2>
+                        <p class="text-gray-700 mb-4">Sistem mendeteksi layar ujian tidak penuh (split screen / dua jendela).</p>
+                        ${counted ? `<div class="bg-red-50 rounded-lg p-4 mb-4"><p class="text-red-800 font-semibold">Pelanggaran ke-${violationCount} dari ${MAX_VIOLATION_AUTOSUBMIT}</p></div>` : ''}
+                        <p class="text-sm text-gray-600 mb-4">Tutup aplikasi atau jendela lain, atau keluar dari split screen, lalu tekan tombol di bawah. Ujian baru bisa dilanjutkan setelah layar kembali penuh.</p>
+                        <p id="splitLockMsg" class="text-sm font-semibold text-red-600 mb-3" style="min-height:1.25rem"></p>
+                        <button onclick="splitLockOk()" class="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">
+                            OKE, Kembali ke Layar Penuh
+                        </button>
+                    </div>`;
+                document.body.appendChild(div);
+                clearInterval(splitLockTimer);
+                // Ujian selesai / dikumpulkan saat layar kunci tampil: lepaskan layar kunci
+                splitLockTimer = setInterval(() => { if (!isExamActive()) releaseSplitLock(); }, 1000);
+            }
+            function splitLockOk() {
+                splitLockAttempts++;
+                activateFullscreen(); // dipicu klik tombol (syarat browser untuk layar penuh)
+                const msg = document.getElementById('splitLockMsg');
+                if (msg) msg.textContent = 'Memeriksa layar...';
+                setTimeout(() => {
+                    const ratioOk = !isScreenRatioViolated();
+                    // Layar penuh wajib, kecuali browser tidak mendukung atau sudah 3x dicoba padahal ukuran layar sudah normal
+                    const fullscreenOk = !isFullscreenSupported() || isFullscreenNow() || splitLockAttempts >= 3;
+                    if (ratioOk && fullscreenOk) { releaseSplitLock(); return; }
+                    const m = document.getElementById('splitLockMsg');
+                    if (m) m.textContent = !ratioOk
+                        ? 'Layar belum penuh. Tutup split screen / jendela lain, lalu tekan tombol lagi.'
+                        : 'Mode layar penuh belum aktif. Tekan tombol lagi.';
+                }, 700);
+            }
+            function releaseSplitLock() {
+                clearInterval(splitLockTimer);
+                splitLockTimer = null;
+                splitLockActive = false;
+                const el = document.getElementById('splitLockOverlay');
+                if (el) el.remove();
+            }
+
+            // countIt=false: hanya mengunci layar tanpa menambah pelanggaran (pemeriksaan awal saat ujian dimuat)
+            function checkSplitScreenViolation(countIt = true) {
                 if (currentUser?.role === 'siswa' && currentExam && !examSubmitted && !isRefreshing) {
                     if (isScreenRatioViolated()) {
-                        recordViolation();
+                        if (splitLockActive) return; // sudah terkunci: satu kejadian = satu pelanggaran
+                        const before = violationCount;
+                        if (countIt) recordViolation('split');
+                        if (!examSubmitted && violationCount < MAX_VIOLATION_AUTOSUBMIT) showSplitLock(violationCount > before);
                     }
                 }
             }
@@ -3113,6 +3158,8 @@
                 // sistem (Circle to Search / Lens) muncul, tapi document.hasFocus() tetap false.
                 if (window._focusPoll) clearInterval(window._focusPoll);
                 focusLostActive = false;
+                // Ujian dimuat dalam keadaan split screen: kunci layar (tanpa menambah pelanggaran)
+                setTimeout(() => checkSplitScreenViolation(false), 2000);
                 window._focusPoll = setInterval(() => {
                     if (!isExamActive()) return;
                     if (document.hidden || !document.hasFocus()) markFocusLost();
@@ -5210,6 +5257,9 @@
                 return guruAssignCall('app_admin_set_wali', { p_guru: guruAssignCtx.guruId, p_kelas: kelas }, kelas ? `Wali kelas ${kelas} disimpan` : 'Status wali kelas dibatalkan');
             }
 
+            // Bank Soal guru: periksa izin TERBARU dari admin; jika dicabut tampilkan pesan, bukan daftar soal.
+            // Selama menu Bank Soal terbuka, izin dipantau tiap 8 detik: dicabut atau diberikan admin
+            // langsung tampil tanpa guru harus klik atau refresh.
             let guruIzinTimer = null;
             function guruHentikanPantauIzin() {
                 if (guruIzinTimer) { clearInterval(guruIzinTimer); guruIzinTimer = null; }
@@ -5254,7 +5304,7 @@
                         <div class="bg-white rounded-2xl shadow-custom p-8 text-center max-w-xl mx-auto">
                             <div class="text-4xl mb-3">🔒</div>
                             <h3 class="font-bold text-lg text-gray-800">Anda tidak dapat membuat soal</h3>
-                            <p class="text-sm text-gray-500 mt-2">Anda tidak ditugaskan membuat soal oleh admin/panitia.</p>
+                            <p class="text-sm text-gray-500 mt-2">Anda tidak ditugaskan membuat soal oleh panitia.</p>
                         </div>`;
                     return;
                 }
