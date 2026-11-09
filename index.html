@@ -1946,10 +1946,14 @@
                                     <p class="mb-3 relative -top-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.910}px; color: #FFFFFF;">Silahkan Login menggunakan NISN Anda</p>
                                 </div>
                         
-                                <form id="loginForm" class="space-y-4">
+                                <form id="loginForm" class="space-y-4" autocomplete="off">
+                                    <input type="text" style="display:none" autocomplete="username">
+                                    <input type="password" style="display:none" autocomplete="current-password">                                
                                     <div>
                                         <label class="block font-medium mb-2 text-black" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Username</label>
                                         <input type="text" id="username" required 
+                                            autocomplete="nope"
+                                            readonly onfocus="this.removeAttribute('readonly');"
                                             class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-green-500 transition"
                                             style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                             placeholder="Masukkan username / nisn">
@@ -1959,6 +1963,8 @@
                                         <label class="block font-medium mb-2 text-black" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
                                         <div class="relative">
                                             <input type="password" id="password" required 
+                                                autocomplete="new-password"
+                                                readonly onfocus="this.removeAttribute('readonly');"
                                                 class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-green-500 transition pr-10"
                                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                                 placeholder="Masukkan password">
@@ -2705,13 +2711,13 @@
                             <div class="bg-white w-full max-w-4xl h-[90vh] md:h-[85vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border-4 border-gray-300 relative">
                                 
                                 <div class="bg-gray-100 p-2 md:p-3 border-b border-gray-300 flex justify-between items-center gap-2 flex-wrap">
-                                    <h3 class="font-bold text-gray-700 text-sm md:text-base flex items-center gap-2">📝 Kertas Buram</h3>
+                                    <h3 class="font-bold text-gray-700 text-sm md:text-base flex items-center gap-2">Kertas Buram</h3>
                                     <div class="flex gap-1.5 md:gap-2">
-                                        <button onclick="setPen()" id="btnPen" class="bg-green-500 text-white px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm border-2 border-green-700">✏️ Pena</button>
-                                        <button onclick="setEraser()" id="btnEraser" class="bg-white text-gray-700 px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm border-2 border-transparent hover:bg-gray-200">🧽 Hapus</button>
-                                        <button onclick="clearCanvas()" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm">🗑️ Bersih</button>
+                                        <button onclick="setPen()" id="btnPen" class="bg-green-500 text-white px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm border-2 border-green-700">Pena</button>
+                                        <button onclick="setEraser()" id="btnEraser" class="bg-white text-gray-700 px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm border-2 border-transparent hover:bg-gray-200">Penghapus</button>
+                                        <button onclick="clearCanvas()" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm">Bersihkan</button>
                                         <div class="w-px h-6 bg-gray-300 mx-1"></div>
-                                        <button onclick="toggleCoretan()" class="bg-gray-800 hover:bg-gray-900 text-white px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm font-bold">❌ Tutup</button>
+                                        <button onclick="toggleCoretan()" class="bg-gray-800 hover:bg-gray-900 text-white px-2 py-1 md:px-3 rounded shadow-sm text-xs md:text-sm font-bold">Tutup</button>
                                     </div>
                                 </div>
 
@@ -2923,7 +2929,7 @@
                     // Atur warna Hijau
                     statusDiv.classList.remove('bg-red-500');
                     statusDiv.classList.add('bg-green-500', 'text-white');
-                    statusText.innerText = "🌐 Akhirnya online lagi 🤗";
+                    statusText.innerText = "Akhirnya online lagi 🤗";
 
                     // 3. Sembunyikan pesan setelah 3 detik
                     // (Disimpan ke variabel agar tidak bentrok jika internet putus nyambung cepat)
@@ -3421,7 +3427,7 @@
                     <div class="space-y-3">
                         <div class="bg-green-50 border-l-4 border-green-500 p-3 mb-4 rounded-r-lg">
                             <p class="text-sm font-bold text-green-800" style="font-family: ${customFont}, ${baseFontStack};">
-                                💡 Pilih semua jawaban yang menurut Anda benar.
+                                Pilih semua jawaban yang menurut Anda benar.
                             </p>
                         </div>
 
@@ -3463,7 +3469,7 @@
                     <div class="mt-4">
                         <label class="block text-green-700 font-bold mb-3 uppercase tracking-wide" 
                             style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">
-                            ✍️ Tulis Jawaban Singkat:
+                            Tulis Jawaban Singkat:
                         </label>
                         
                         <input type="text" 
@@ -3522,7 +3528,7 @@
                 return `
                     <div class="space-y-3">
                         <div class="bg-green-50 border-l-4 border-green-500 p-3 mb-2 rounded-r-lg">
-                            <p class="text-sm font-bold text-green-800">💡 Pilih pasangan yang tepat.</p>
+                            <p class="text-sm font-bold text-green-800">Pilih pasangan yang tepat.</p>
                         </div>
                         ${question.options.map((p, i) => `
                             <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-200 rounded-xl bg-white">
@@ -8434,7 +8440,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                 } else if (q.question_type === 'pilihan_ganda_kompleks') {
                     const sel = Array.isArray(ans) ? ans : [];
                     body = `<div class="space-y-3">
-                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-green-800">💡 Pilih semua jawaban yang menurut Anda benar.</p></div>
+                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-green-800">Pilih semua jawaban yang menurut Anda benar.</p></div>
                         ${options.map((opt, i) => `
                         <label class="flex items-center p-4 border-2 rounded-xl cursor-pointer transition ${pvk.correctIdx.includes(i) ? 'pv-correct' : ''} ${sel.includes(i) ? 'border-[#006400] bg-[#e8f3e8]' : 'border-gray-200 bg-white hover:border-gray-400'}">
                             <input type="checkbox" ${sel.includes(i) ? 'checked' : ''} onchange="pvToggleComplex(${i})" class="w-6 h-6 text-[#006400] rounded flex-shrink-0">
@@ -8453,7 +8459,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                 } else if (q.question_type === 'menjodohkan') {
                     const cur = (ans && typeof ans === 'object') ? ans : {};
                     body = `<div class="space-y-3">
-                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-green-800">💡 Pilih pasangan yang tepat.</p></div>
+                        <div class="bg-green-50 border-l-4 border-green-500 p-3 rounded-r-lg"><p class="text-sm font-bold text-green-800">Pilih pasangan yang tepat.</p></div>
                         ${options.map((p, i) => `
                         <div class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 border-2 border-gray-200 rounded-xl bg-white">
                             <div class="flex-1 font-medium">${i + 1}. ${escHtml(p.l)}</div>
@@ -8482,7 +8488,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                         </div>
                         <div class="flex items-center gap-2">
                             <div class="text-lg md:text-xl font-bold">--:--</div>
-                            <button onclick="pvToggleNav()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-2.5 py-1 rounded-lg text-xs md:text-sm font-semibold">⛚ Daftar Soal</button>
+                            <button onclick="pvToggleNav()" class="bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-2.5 py-1 rounded-lg text-xs md:text-sm font-semibold">DAFTAR SOAL</button>
                         </div>
                     </div>
                     <div id="pvScroll" class="flex-1 overflow-y-auto p-2 md:p-4">
@@ -8509,7 +8515,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                     <div class="${s.navOpen ? '' : 'hidden'} absolute inset-0 z-10 bg-black/60 flex items-center justify-center p-3" onclick="if(event.target===this) pvToggleNav()">
                         <div class="bg-white w-full max-w-lg max-h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
                             <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200">
-                                <h3 class="font-bold text-gray-700 text-sm md:text-base">Daftar Soal</h3>
+                                <h3 class="font-bold text-gray-700 text-sm md:text-base">DAFTAR SOAL</h3>
                                 <button onclick="pvToggleNav()" class="text-gray-500 hover:text-gray-800 text-lg leading-none px-2">✕</button>
                             </div>
                             <div class="p-3 overflow-y-auto"><div class="grid grid-cols-5 sm:grid-cols-8 gap-1.5">${navBtns}</div></div>
