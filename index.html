@@ -1947,13 +1947,9 @@
                                 </div>
                         
                                 <form id="loginForm" class="space-y-4" autocomplete="off">
-                                    <input type="text" style="display:none" autocomplete="username">
-                                    <input type="password" style="display:none" autocomplete="current-password">                                
                                     <div>
                                         <label class="block font-medium mb-2 text-black" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Username</label>
                                         <input type="text" id="username" required 
-                                            autocomplete="nope"
-                                            readonly onfocus="this.removeAttribute('readonly');"
                                             class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-green-500 transition"
                                             style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                             placeholder="Masukkan username / nisn">
@@ -1963,8 +1959,6 @@
                                         <label class="block font-medium mb-2 text-black" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.875}px;">Password</label>
                                         <div class="relative">
                                             <input type="password" id="password" required 
-                                                autocomplete="new-password"
-                                                readonly onfocus="this.removeAttribute('readonly');"
                                                 class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-green-500 transition pr-10"
                                                 style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
                                                 placeholder="Masukkan password">
