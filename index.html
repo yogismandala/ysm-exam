@@ -2181,6 +2181,8 @@
             function renderPilihJadwalSiswa(user) {
                 const app = document.getElementById('app');
 
+                const pw = document.getElementById('password');
+                if (pw) pw.value = '';
                 app.innerHTML = `<div class="fixed inset-0" style="background: linear-gradient(to bottom, #003300 0%, #006400 35%, #ffffff 35%, #FFFFFF 100%);"></div>`;
                 
                 let activeSubjectsNames = getActiveSubjects(); 
