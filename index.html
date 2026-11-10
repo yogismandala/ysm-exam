@@ -1991,10 +1991,25 @@
                 const toggleButton = document.getElementById('togglePassword');
                 const eyeIcon = document.getElementById('eyeIcon');
 
+                const maskMode = !!(window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc'));
+                if (maskMode) {
+                    passwordInput.setAttribute('type', 'text');
+                    passwordInput.style.webkitTextSecurity = 'disc';
+                    passwordInput.setAttribute('autocomplete', 'off');
+                    passwordInput.setAttribute('autocapitalize', 'off');
+                    passwordInput.setAttribute('autocorrect', 'off');
+                    passwordInput.setAttribute('spellcheck', 'false');
+                    document.getElementById('username').setAttribute('autocomplete', 'off');
+                }
+                let passwordHidden = true;
                 toggleButton.addEventListener('click', function () {
-                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-                    passwordInput.setAttribute('type', type);
-                    eyeIcon.textContent = type === 'password' ? '🙈' : '🐵';
+                    passwordHidden = !passwordHidden;
+                    if (maskMode) {
+                        passwordInput.style.webkitTextSecurity = passwordHidden ? 'disc' : 'none';
+                    } else {
+                        passwordInput.setAttribute('type', passwordHidden ? 'password' : 'text');
+                    }
+                    eyeIcon.textContent = passwordHidden ? '🙈' : '🐵';
                 });
             }
             
@@ -2633,7 +2648,7 @@
                                     <div class="flex items-center gap-2">
                                     <div id="timer" class="exd-hide text-lg md:text-xl font-bold" style="font-family: ${customFont}, ${baseFontStack};"></div>
                                     <button onclick="toggleNavModal()" class="exd-hide bg-white bg-opacity-20 hover:bg-opacity-30 text-white px-1.5 py-0.5 rounded-lg text-xs md:text-xs font-semibold transition flex-shrink-0">
-                                        ⛚ Daftar Soal
+                                        DAFTAR SOAL
                                     </button>
                                 </div>
                                 </div>
