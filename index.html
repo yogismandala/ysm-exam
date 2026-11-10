@@ -1991,25 +1991,10 @@
                 const toggleButton = document.getElementById('togglePassword');
                 const eyeIcon = document.getElementById('eyeIcon');
 
-                const maskMode = !!(window.CSS && CSS.supports && CSS.supports('-webkit-text-security', 'disc'));
-                if (maskMode) {
-                    passwordInput.setAttribute('type', 'text');
-                    passwordInput.style.webkitTextSecurity = 'disc';
-                    passwordInput.setAttribute('autocomplete', 'off');
-                    passwordInput.setAttribute('autocapitalize', 'off');
-                    passwordInput.setAttribute('autocorrect', 'off');
-                    passwordInput.setAttribute('spellcheck', 'false');
-                    document.getElementById('username').setAttribute('autocomplete', 'off');
-                }
-                let passwordHidden = true;
                 toggleButton.addEventListener('click', function () {
-                    passwordHidden = !passwordHidden;
-                    if (maskMode) {
-                        passwordInput.style.webkitTextSecurity = passwordHidden ? 'disc' : 'none';
-                    } else {
-                        passwordInput.setAttribute('type', passwordHidden ? 'password' : 'text');
-                    }
-                    eyeIcon.textContent = passwordHidden ? '🙈' : '🐵';
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    eyeIcon.textContent = type === 'password' ? '🙈' : '🐵';
                 });
             }
             
@@ -2195,6 +2180,8 @@
             
             function renderPilihJadwalSiswa(user) {
                 const app = document.getElementById('app');
+
+                app.innerHTML = `<div class="fixed inset-0" style="background: linear-gradient(to bottom, #003300 0%, #006400 35%, #ffffff 35%, #FFFFFF 100%);"></div>`;
                 
                 let activeSubjectsNames = getActiveSubjects(); 
                 
