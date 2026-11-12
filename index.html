@@ -15,14 +15,14 @@
         <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
         <link rel="icon" type="image/png" sizes="512x512" href="icons/icon-512.png">
         <script src="https://cdn.tailwindcss.com"></script>
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/mammoth@1.7.2/mammoth.browser.min.js"></script>
+        <script defer src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/mammoth@1.7.2/mammoth.browser.min.js"></script>
         <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-        <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+        <script defer src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.css">
         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/katex.min.js"></script>
         <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.0/dist/contrib/auto-render.min.js"></script>
-        <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+        <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
         <script src="https://cdn.jsdelivr.net/npm/dompurify@3.1.6/dist/purify.min.js"></script>
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -601,13 +601,6 @@
             }
             function baseSubject(key) {
                 return parseSubjectKey(key).mapel;
-            }
-            // Semua kombinasi jenis ujian + mapel, ditambah nama lain yang sudah ada di data (mis. data lama)
-            function getAllSubjectKeys(extraKeys = []) {
-                const keys = [];
-                SUBJECTS.forEach(m => EXAM_TYPES.forEach(t => keys.push(makeSubjectKey(t.code, m))));
-                extraKeys.forEach(k => { if (k && !keys.includes(k)) keys.push(k); });
-                return keys;
             }
             // Cocokkan soal/hasil dengan filter mapel + jenis ujian (kosong = semua; '__none__' = data lama tanpa jenis)
             function matchSubjectAndType(key, mapel, type) {
@@ -2181,8 +2174,6 @@
             function renderPilihJadwalSiswa(user) {
                 const app = document.getElementById('app');
 
-                const pw = document.getElementById('password');
-                if (pw) pw.value = '';
                 app.innerHTML = `<div class="fixed inset-0" style="background: linear-gradient(to bottom, #003300 0%, #006400 35%, #ffffff 35%, #FFFFFF 100%);"></div>`;
                 
                 let activeSubjectsNames = getActiveSubjects(); 
@@ -5663,7 +5654,7 @@
                                                     
                                                     return `
                                                     <tr class="hover:bg-gray-50 border-b last:border-0 transition-colors">
-                                                        <td class="p-2 font-medium text-gray-800" style="font-family: ${customFont}, ${baseFontStack};">${subject}</td>
+                                                        <td class="p-2 font-medium text-gray-800" style="font-family: ${customFont}, ${baseFontStack};">${escHtml(subject)}</td>
                                                         <td class="p-2 text-center text-gray-500">${count7 > 0 ? count7 : '-'}</td>
                                                         <td class="p-2 text-center text-gray-500">${count8 > 0 ? count8 : '-'}</td>
                                                         <td class="p-2 text-center text-gray-500">${count9 > 0 ? count9 : '-'}</td>
@@ -5713,7 +5704,7 @@
                                                     <div class="flex flex-wrap gap-1.5">
                                                         ${rekapMapel.length > 0 ? rekapMapel.map(r => `
                                                             <span class="inline-block text-[10px] md:text-xs px-2 py-1 rounded-full border font-medium ${r.belum === 0 ? 'bg-green-50 border-green-200 text-green-700' : (r.sudah === 0 ? 'bg-red-50 border-red-200 text-red-600' : 'bg-yellow-50 border-yellow-200 text-yellow-700')}">
-                                                                ${r.mapel}: ${r.sudah}/${jumlahSiswa}
+                                                                ${escHtml(r.mapel)}: ${r.sudah}/${jumlahSiswa}
                                                             </span>
                                                         `).join('') : `<span class="text-[10px] md:text-xs text-gray-400">Belum ada mapel di Bank Soal</span>`}
                                                     </div>
@@ -7937,8 +7928,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
 
                 const previewText = (html) => {
                     const noImg = String(html || '').replace(/<img[^>]*>/gi, ' [gambar] ');
-                    const plain = noImg.replace(/<[^>]*>/g, '');
-                    return plain.length > 220 ? plain.slice(0, 220) + '…' : plain;
+                    return escHtml(plainText(noImg, 220));
                 };
 
                 // Helper HTML untuk item pertanyaan
@@ -7949,7 +7939,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                 <div class="flex-1 min-w-0">
                                     <div class="flex gap-2 mb-2 flex-wrap">
                                         <span class="px-2 py-1 bg-gray-700 text-white rounded text-xs font-bold">No. ${nomorUrut}</span>
-                                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">${q.subject}</span>
+                                        <span class="px-2 py-1 bg-green-100 text-green-800 rounded text-xs font-semibold">${escHtml(q.subject)}</span>
                                         <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">${getQuestionTypeLabel(q.question_type)}</span>
                                     </div>
                                     <p class="text-gray-800 text-sm line-clamp-2">${previewText(q.question_text)}</p>
@@ -7968,7 +7958,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                 <div class="flex-1 min-w-0">
                                     <div class="flex gap-2 mb-2 flex-wrap">
                                         <span class="px-2 py-1 bg-gray-700 text-white rounded text-xs font-bold">No. ${nomorUrut}</span>
-                                        <span class="px-2 py-1 ${isOwner ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'} rounded text-xs font-semibold">${q.subject}</span>
+                                        <span class="px-2 py-1 ${isOwner ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'} rounded text-xs font-semibold">${escHtml(q.subject)}</span>
                                         <span class="px-2 py-1 bg-purple-100 text-purple-800 rounded text-xs font-semibold">${getQuestionTypeLabel(q.question_type)}</span>
                                     </div>
                                     <p class="text-gray-800 text-sm break-words">${previewText(q.question_text)}</p>
@@ -7992,11 +7982,11 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                         <div class="flex flex-col sm:flex-row gap-3 mb-3 sm:mb-0 w-full sm:w-auto">
                             <select id="filterKelasBankSoal" onchange="window.selectedBankSoalClass = this.value; resetQuestionPages(); renderQuestionsSection()" class="w-full sm:w-auto px-2 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
                                 <option value="">Semua Kelas</option>
-                                ${uniqueClasses.map(cls => `<option value="${cls}" ${window.selectedBankSoalClass === cls ? 'selected' : ''}>${cls}</option>`).join('')}
+                                ${uniqueClasses.map(cls => `<option value="${escHtml(cls)}" ${window.selectedBankSoalClass === cls ? 'selected' : ''}>${escHtml(cls)}</option>`).join('')}
                             </select>
                             <select id="filterMapelBankSoal" onchange="window.selectedBankSoalSubject = this.value; resetQuestionPages(); renderQuestionsSection()" class="w-full sm:w-auto px-2 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
                                 <option value="">Semua Mata Pelajaran</option>
-                                ${uniqueSubjects.map(sub => `<option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>`).join('')}
+                                ${uniqueSubjects.map(sub => `<option value="${escHtml(sub)}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${escHtml(sub)}</option>`).join('')}
                             </select>
                             <select id="filterJenisBankSoal" onchange="window.selectedBankSoalType = this.value; resetQuestionPages(); renderQuestionsSection()" class="w-full sm:w-auto px-2 py-2 border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:border-blue-500 bg-white">
                                 <option value="">Semua Jenis Ujian</option>
@@ -8094,7 +8084,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                         if (selMapel) {
                             selMapel.innerHTML = `
                                 <option value="">Semua Mata Pelajaran</option>
-                                ${uniqueSubjects.map(sub => `<option value="${sub}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${sub}</option>`).join('')}
+                                ${uniqueSubjects.map(sub => `<option value="${escHtml(sub)}" ${window.selectedBankSoalSubject === sub ? 'selected' : ''}>${escHtml(sub)}</option>`).join('')}
                             `;
                         }
                         const selJenis = document.getElementById('filterJenisBankSoal');
@@ -8105,7 +8095,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                         if (selKelas) {
                             selKelas.innerHTML = `
                                 <option value="">Semua Kelas</option>
-                                ${uniqueClasses.map(cls => `<option value="${cls}" ${window.selectedBankSoalClass === cls ? 'selected' : ''}>${cls}</option>`).join('')}
+                                ${uniqueClasses.map(cls => `<option value="${escHtml(cls)}" ${window.selectedBankSoalClass === cls ? 'selected' : ''}>${escHtml(cls)}</option>`).join('')}
                             `;
                         }
                     }
@@ -8725,8 +8715,8 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                             ${contentHtml}
 
                             <div class="mt-4 p-2 bg-gray-50 rounded border border-gray-100 text-[10px] text-gray-500 flex justify-between uppercase font-bold tracking-tighter">
-                                <span>Kelas: ${q.question_class || '-'}</span>
-                                <span>Mapel: ${q.subject || '-'}</span>
+                                <span>Kelas: ${escHtml(q.question_class || '-')}</span>
+                                <span>Mapel: ${escHtml(q.subject || '-')}</span>
                             </div>
                         </div>`,
                     width: '550px',
@@ -11021,7 +11011,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                     <label style="display: block; font-weight: bold; margin-bottom: 5px; font-size: 14px;">2. Filter Mata Pelajaran / Bab:</label>
                                     <select id="swalFilterSubject" style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background: white;">
                                         <option value="ALL">✨ Semua Mapel / Bab</option>
-                                        ${uniqueSubjects.map(sub => `<option value="${sub}">${sub}</option>`).join('')}
+                                        ${uniqueSubjects.map(sub => `<option value="${escHtml(sub)}">${escHtml(sub)}</option>`).join('')}
                                     </select>
                                 </div>
                             </div>
@@ -11627,7 +11617,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                     <label style="display:block; font-weight:bold; margin-bottom:4px;">Filter Mata Pelajaran / Bab:</label>
                                     <select id="wordFilterSubject" style="width:100%; padding:8px; border:1px solid #ccc; border-radius:6px; background:white;">
                                         <option value="ALL">✨ Semua Mapel / Bab</option>
-                                        ${uniqueSubjects.map(s => `<option value="${s}">${s}</option>`).join('')}
+                                        ${uniqueSubjects.map(s => `<option value="${escHtml(s)}">${escHtml(s)}</option>`).join('')}
                                     </select>
                                 </div>
                                 <hr style="margin:12px 0; border-color:#eee;">
