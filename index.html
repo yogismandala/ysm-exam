@@ -3005,12 +3005,20 @@
                     document.querySelectorAll('.violation-warning-popup').forEach(el => el.remove());
                     releaseSplitLock();
                     Swal.fire({
-                        icon: 'error',
-                        title: 'Batas Pelanggaran Tercapai',
-                        text: 'Ujian Anda dikumpulkan otomatis karena pelanggaran mencapai ' + MAX_VIOLATION_AUTOSUBMIT + ' kali.',
+                        html: `
+                            <div style="text-align:center; padding:4px 0;">
+                                <div style="width:64px; height:64px; margin:0 auto 14px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center;">
+                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                        <circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12.5"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                                    </svg>
+                                </div>
+                                <h2 style="margin:0 0 6px; font-size:20px; font-weight:700; color:#111827;">Batas Pelanggaran Tercapai</h2>
+                                <p style="margin:0; font-size:14px; line-height:1.5; color:#6b7280;">Ujian Anda dikumpulkan otomatis karena pelanggaran mencapai ${MAX_VIOLATION_AUTOSUBMIT} kali.</p>
+                            </div>`,
+                        width: 360,
                         allowOutsideClick: false,
                         showConfirmButton: false,
-                        timer: 6000,
+                        timer: 7000,
                         timerProgressBar: true
                     });
                     Promise.resolve(submitExam(true, 'pelanggaran'))
@@ -3202,24 +3210,27 @@
             function showViolationWarning() {
                 document.querySelectorAll('.violation-warning-popup').forEach(el => el.remove());
                 const warningDiv = document.createElement('div');
-                warningDiv.className = 'violation-warning-popup fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50';
+                warningDiv.className = 'violation-warning-popup fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4';
+                const dots = Array.from({ length: MAX_VIOLATION_AUTOSUBMIT }, (_, i) =>
+                    `<span style="width:10px; height:10px; border-radius:50%; background:${i < violationCount ? '#dc2626' : '#e5e7eb'};"></span>`
+                ).join('');
                 warningDiv.innerHTML = `
-                    <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl">
-                        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-                            <span class="text-5xl">⚠️</span>
+                    <div class="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl">
+                        <div style="width:56px; height:56px; margin:0 auto 12px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3 2.5 20h19L12 3z"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17.2" x2="12.01" y2="17.2"/>
+                            </svg>
                         </div>
-                        <h2 class="text-2xl font-bold text-red-600 mb-3">PERINGATAN!</h2>
-                        <p class="text-gray-700 mb-4">Sistem mendeteksi jendela ujian hilang fokus.</p>
-                        <div class="bg-red-50 rounded-lg p-4 mb-4">
-                            <p class="text-red-800 font-semibold">Pelanggaran ke-${violationCount} dari ${MAX_VIOLATION_AUTOSUBMIT}</p>
-                        </div>
-                        <p class="text-sm text-gray-600 mb-6">Perhatian: Jika Anda melanggar hingga ${MAX_VIOLATION_AUTOSUBMIT} kali, ujian akan otomatis terkirim!</p>
-                        <button onclick="activateFullscreen(); this.closest('div.fixed').remove()" 
-                            class="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">
+                        <h2 class="text-lg font-bold text-gray-900">Peringatan</h2>
+                        <p class="text-sm text-gray-500 mt-1">Jendela ujian hilang fokus.</p>
+                        <div style="display:flex; justify-content:center; gap:6px; margin:14px 0 6px;">${dots}</div>
+                        <p class="text-sm font-semibold text-red-600">Pelanggaran ke-${violationCount} dari ${MAX_VIOLATION_AUTOSUBMIT}</p>
+                        <p class="text-xs text-gray-400 mt-1 mb-5">Pada pelanggaran ke-${MAX_VIOLATION_AUTOSUBMIT}, ujian dikumpulkan otomatis.</p>
+                        <button onclick="activateFullscreen(); this.closest('div.fixed').remove()"
+                            class="w-full py-2.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">
                             Saya Mengerti, Lanjutkan Ujian
                         </button>
-                    </div>
-                `;
+                    </div>`;
                 document.body.appendChild(warningDiv);
             }
 
