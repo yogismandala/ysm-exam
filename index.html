@@ -3010,7 +3010,7 @@
                         text: 'Ujian Anda dikumpulkan otomatis karena pelanggaran mencapai ' + MAX_VIOLATION_AUTOSUBMIT + ' kali.',
                         allowOutsideClick: false,
                         showConfirmButton: false,
-                        timer: 8000,
+                        timer: 6000,
                         timerProgressBar: true
                     });
                     Promise.resolve(submitExam(true, 'pelanggaran'))
@@ -4131,9 +4131,9 @@
                             
                             ${examSettings.show_score ? `
                                 <div class="grid grid-cols-1 gap-4 mb-6">
-                                    <div class="bg-green-50 rounded-xl p-6">
+                                    <div class="bg-white rounded-xl p-6" style="border: 2px solid ${score >= 80 ? '#dcfce7' : score >= 60 ? '#fef9c3' : '#fee2e2'};">
                                         <p class="text-gray-700 mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">NILAI ANDA</p>
-                                        <p class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 3}px; color: ${primaryColor};">${score}</p>
+                                        <p class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 3}px; color: ${score >= 80 ? '#166534' : score >= 60 ? '#854d0e' : '#991b1b'};">${score}</p>
                                     </div>
                                 </div>
                                 <p class="text-gray-600" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.8}px;">Terima kasih telah menyelesaikan ujian.</p>
