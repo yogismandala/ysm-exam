@@ -1936,7 +1936,7 @@
                                 ${guestButtonHTML()}
                                 <div class="text-center mb-8">
                                     <h1 class="font-bold mb-2.5 relative -top-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 2.1}px; color: #FFFFFF;">Selamat Datang</h1>
-                                    <p class="mb-3 relative -top-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.910}px; color: #FFFFFF;">Silahkan Login menggunakan NISN Anda</p>
+                                    <p class="mb-3 relative -top-4" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 0.910}px; color: #FFFFFF;">Silahkan Login menggunakan Akun Anda</p>
                                 </div>
                         
                                 <form id="loginForm" class="space-y-4" autocomplete="off">
@@ -1945,7 +1945,7 @@
                                         <input type="text" id="username" required 
                                             class="text-grey w-full px-3 py-2 rounded-lg focus:outline-none border-2 border-gray-300 focus:border-green-500 transition"
                                             style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;"
-                                            placeholder="Masukkan username / nisn">
+                                            placeholder="Masukkan username">
                                     </div>
                             
                                     <div class="relative">
@@ -3071,21 +3071,31 @@
                 splitLockActive = true;
                 splitLockAttempts = 0;
                 if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+                const dots = Array.from({ length: MAX_VIOLATION_AUTOSUBMIT }, (_, i) =>
+                    `<span style="width:10px; height:10px; border-radius:50%; background:${i < violationCount ? '#dc2626' : '#e5e7eb'};"></span>`
+                ).join('');
+
                 const div = document.createElement('div');
                 div.id = 'splitLockOverlay';
-                div.className = 'split-lock-popup fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center';
+                div.className = 'split-lock-popup fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center p-4';
                 div.style.zIndex = '99999';
                 div.innerHTML = `
-                    <div class="bg-white rounded-2xl p-8 max-w-md mx-4 text-center shadow-2xl">
-                        <div class="w-20 h-20 mx-auto mb-4 rounded-full bg-red-100 flex items-center justify-center">
-                            <span class="text-5xl">⚠️</span>
+                    <div class="bg-white rounded-2xl p-6 w-full max-w-xs text-center shadow-2xl">
+                        <div style="width:56px; height:56px; margin:0 auto 12px; border-radius:50%; background:#fee2e2; display:flex; align-items:center; justify-content:center;">
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M12 3 2.5 20h19L12 3z"/><line x1="12" y1="10" x2="12" y2="14"/><line x1="12" y1="17.2" x2="12.01" y2="17.2"/>
+                            </svg>
                         </div>
-                        <h2 class="text-2xl font-bold text-red-600 mb-3">PERINGATAN!</h2>
-                        <p class="text-gray-700 mb-4">Sistem mendeteksi layar ujian tidak penuh (split screen / dua jendela).</p>
-                        ${counted ? `<div class="bg-red-50 rounded-lg p-4 mb-4"><p class="text-red-800 font-semibold">Pelanggaran ke-${violationCount} dari ${MAX_VIOLATION_AUTOSUBMIT}</p></div>` : ''}
-                        <p class="text-sm text-gray-600 mb-4">Tutup aplikasi atau jendela lain, atau keluar dari split screen, lalu tekan tombol di bawah. Ujian baru bisa dilanjutkan setelah layar kembali penuh.</p>
-                        <p id="splitLockMsg" class="text-sm font-semibold text-red-600 mb-3" style="min-height:1.25rem"></p>
-                        <button onclick="splitLockOk()" class="px-6 py-3 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">
+                        <h2 class="text-lg font-bold text-gray-900">Peringatan</h2>
+                        <p class="text-sm text-gray-500 mt-1">Layar ujian tidak penuh (split screen / dua jendela).</p>
+                        <div style="display:flex; justify-content:center; gap:6px; margin:14px 0 6px;">${dots}</div>
+                        ${counted
+                            ? `<p class="text-sm font-semibold text-red-600">Pelanggaran ke-${violationCount} dari ${MAX_VIOLATION_AUTOSUBMIT}</p>`
+                            : `<p class="text-sm font-semibold text-gray-500">Pelanggaran saat ini: ${violationCount} dari ${MAX_VIOLATION_AUTOSUBMIT}</p>`}
+                        <p class="text-xs text-gray-400 mt-1 mb-3">Pada pelanggaran ke-${MAX_VIOLATION_AUTOSUBMIT}, ujian dikumpulkan otomatis.</p>
+                        <p class="text-xs text-gray-500 mb-3">Tutup aplikasi/jendela lain atau keluar dari split screen, lalu tekan tombol di bawah.</p>
+                        <p id="splitLockMsg" class="text-xs font-semibold text-red-600 mb-3" style="min-height:1rem"></p>
+                        <button onclick="splitLockOk()" class="w-full py-2.5 bg-red-600 text-white rounded-lg font-semibold hover:bg-red-700 transition">
                             OKE, Kembali ke Layar Penuh
                         </button>
                     </div>`;
@@ -4142,7 +4152,7 @@
                             
                             ${examSettings.show_score ? `
                                 <div class="grid grid-cols-1 gap-4 mb-6">
-                                    <div class="bg-white rounded-xl p-6" style="border: 2px solid ${score >= 80 ? '#dcfce7' : score >= 60 ? '#fef9c3' : '#fee2e2'};">
+                                    <div class="bg-white rounded-xl p-6" style="border: 3px solid ${score >= 80 ? '#dcfce7' : score >= 60 ? '#fef9c3' : '#fee2e2'};">
                                         <p class="text-gray-700 mb-2" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize}px;">NILAI ANDA</p>
                                         <p class="font-bold" style="font-family: ${customFont}, ${baseFontStack}; font-size: ${baseSize * 3}px; color: ${score >= 80 ? '#166534' : score >= 60 ? '#854d0e' : '#991b1b'};">${score}</p>
                                     </div>
@@ -4715,7 +4725,8 @@
                         sem: mm >= 7 ? 'ganjil' : 'genap', tahun: mm >= 7 ? yy : yy - 1,
                         rows: null, range: null, loading: false
                     },
-                    nilai: { key: '', roster: [], results: null, loading: false }
+                    nilai: { key: '', roster: [], results: null, loading: false },
+                    koreksi: { key: '', ujian: [], subject: '' }
                 };
                 const box = document.getElementById('guruContent');
                 if (box) box.innerHTML = '<div class="text-center py-12 text-gray-400">Memuat data presensi...</div>';
@@ -4735,12 +4746,20 @@
                 presensiRender();
                 const isi = presensiState.isi;
                 if (tab === 'isi' && presensiIsiKeyNow() !== '|' && isi.roster.length === 0 && !isi.loading) presensiLoadSesi();
+                if (tab === 'koreksi') {
+                    koreksiState.mode = 'guru';
+                    const kz = presensiState.koreksi;
+                    if (!kz.key && presensiState.tugas.length) {
+                        const t0 = presensiState.tugas[0];
+                        koreksiGuruPilihKelas(presensiKey(t0.kelas, t0.mapel));
+                    }
+                }
             }
             function presensiRender() {
                 const box = document.getElementById('guruContent');
                 if (!box || !presensiState) return;
                 const { primaryColor, customFont, baseFontStack, textColor } = RC;
-                const tabs = [['isi', 'Isi Presensi'], ['rekap', 'Rekap & Unduh'], ['nilai', 'Nilai'], ['kelas', 'Kelas Saya']];
+                const tabs = [['isi', 'Isi Presensi'], ['rekap', 'Rekap & Unduh'], ['nilai', 'Nilai'], ['koreksi', 'Koreksi'], ['kelas', 'Kelas Saya']];
                 const tabBar = tabs.map(([k, label]) => `
                     <button onclick="presensiSetTab('${k}')" class="px-4 py-2 rounded-xl text-sm font-semibold border transition whitespace-nowrap ${presensiState.tab === k ? 'text-white border-transparent' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'}"
                         style="${presensiState.tab === k ? `background-color: ${primaryColor};` : ''}">${label}</button>`).join('');
@@ -4750,6 +4769,7 @@
                 if (presensiState.tab === 'isi') body = presensiHTMLIsi();
                 else if (presensiState.tab === 'rekap') body = presensiHTMLRekap();
                 else if (presensiState.tab === 'nilai') body = presensiHTMLNilai();
+                else if (presensiState.tab === 'koreksi') body = presensiHTMLKoreksi();                
                 else body = presensiHTMLKelas();
                 box.innerHTML = `
                     <div class="space-y-4" style="font-family: ${customFont}, ${baseFontStack};">
@@ -7128,6 +7148,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                                 <button onclick="downloadExcel()" class="px-3 py-2 text-sm bg-green-500 hover:bg-green-600 rounded-lg text-white font-semibold transition shadow-sm">Download Hasil Excel</button>
                                 <button onclick="showQuestionAnalysis()" class="px-3 py-2 text-sm bg-blue-500 hover:bg-blue-600 rounded-lg text-white font-semibold transition shadow-sm">Analisis Soal</button>
                                 <button onclick="showRecalcDialog()" class="px-3 py-2 text-sm bg-purple-500 hover:bg-purple-600 rounded-lg text-white font-semibold transition shadow-sm" title="Hitung ulang nilai setelah kunci jawaban diperbaiki">Hitung Ulang</button>
+                                <button onclick="koreksiOpenAdmin()" class="px-3 py-2 text-sm bg-teal-600 hover:bg-teal-700 rounded-lg text-white font-semibold transition shadow-sm" title="Benarkan jawaban isian singkat yang berbeda dari kunci tetapi layak dianggap benar">Koreksi Isian</button>
                                 <button id="btnDeleteSelected" onclick="deleteSelectedResults()" disabled class="px-3 py-2 text-sm bg-orange-500 rounded-lg text-white font-semibold hover:bg-orange-600 transition shadow-sm disabled:opacity-40 disabled:cursor-not-allowed">Hapus Terpilih (0)</button>
                                 <button onclick="deleteResultsByClass()" class="px-3 py-2 text-sm bg-orange-500 hover:bg-orange-600 rounded-lg text-white font-semibold transition shadow-sm">Hapus Per Kelas</button>
                                 <button onclick="clearAllResults()" class="px-3 py-2 text-sm bg-red-500 hover:bg-red-600 rounded-lg text-white font-semibold transition shadow-sm">Bersihkan Data</button>
@@ -7491,8 +7512,15 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
             }
 
             // Logika sama dengan calculateScore(): hasil 'benar' | 'salah' | 'kosong'
-            function evaluateAnswer(q, rawStudent) {
+            // Apakah jawaban isian singkat pada hasil ini dibenarkan manual oleh guru/admin
+            function manualCorrect(r, qid) {
+                const k = parseResultField(r && r.koreksi_manual, {}) || {};
+                const v = k[String(qid)];
+                return !!(v && (v === true || v.b === true));
+            }
+            function evaluateAnswer(q, rawStudent, manual) {
                 if (isEmptyAnswer(rawStudent)) return 'kosong';
+                if (manual && q.question_type === 'isian_singkat') return 'benar'; // dibenarkan manual
                 let key;
                 try { key = decodeQuestionKey(q); } catch (e) { return 'salah'; }
                 let options = q.options;
@@ -7583,7 +7611,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                     const raw = answers[idx];
                     return {
                         no: idx + 1, q, raw,
-                        status: q ? evaluateAnswer(q, raw) : 'hilang',
+                        status: q ? evaluateAnswer(q, raw, manualCorrect(r, q.id)) : 'hilang',
                         m: (q && q.question_type === 'menjodohkan') ? matchingResult(q, raw) : null
                     };
                 });
@@ -7634,6 +7662,179 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
 
 
             // ---------- ANALISIS PER SOAL ----------
+            // ===== KOREKSI MANUAL ISIAN SINGKAT (admin, dan guru yang ditugaskan di kelas + mapel itu) =====
+            let koreksiState = { mode: 'admin', subject: '', kelas: '', data: null, loading: false, changed: false };
+
+            function koreksiBoxHTML() {
+                const k = koreksiState;
+                if (k.loading) return '<div class="text-center py-8 text-gray-400">Memuat jawaban...</div>';
+                if (!k.data) return '<div class="text-center py-8 text-gray-400">Pilih ujian dan kelas, lalu klik Tampilkan.</div>';
+                const soal = k.data.soal || [];
+                if (!soal.length) return '<div class="text-center py-8 text-green-600 text-sm">Tidak ada jawaban isian singkat yang berbeda dari kunci.</div>';
+                return soal.map((s, si) => `
+                    <div class="border border-gray-200 rounded-xl overflow-hidden mb-3 text-left">
+                        <div class="px-3 py-2 bg-gray-50">
+                            <p class="text-sm text-gray-800">${escHtml(plainText(s.teks, 160))}</p>
+                            <p class="text-xs text-gray-500 mt-0.5">Kunci: <b class="text-emerald-700">${escHtml(s.kunci)}</b></p>
+                        </div>
+                        <table class="w-full text-sm"><tbody>
+                            ${s.kelompok.map((g, gi) => {
+                                const semua = g.dibenarkan >= g.jumlah;
+                                const sebagian = g.dibenarkan > 0 && !semua;
+                                return `<tr class="border-t border-gray-100">
+                                    <td class="px-3 py-2"><span class="font-medium">${escHtml(g.jawaban)}</span>
+                                        <span class="text-xs text-gray-400" title="${escHtml((g.siswa || []).join(', '))}"> · ${g.jumlah} siswa</span>
+                                        ${sebagian ? `<span class="text-xs text-amber-600"> · ${g.dibenarkan} sudah dibenarkan</span>` : ''}</td>
+                                    <td class="px-3 py-2 text-right whitespace-nowrap">
+                                        ${semua
+                                            ? `<span class="text-xs font-semibold text-green-700 mr-2">✅ Dibenarkan</span><button onclick="koreksiSet(${si}, ${gi}, false)" class="px-3 py-1 text-xs rounded-lg border border-gray-300 text-gray-600 bg-white hover:bg-gray-50">Batalkan</button>`
+                                            : `<button onclick="koreksiSet(${si}, ${gi}, true)" class="px-3 py-1 text-xs rounded-lg bg-emerald-600 text-white font-semibold hover:bg-emerald-700">✓ Benarkan</button>`}
+                                    </td>
+                                </tr>`;
+                            }).join('')}
+                        </tbody></table>
+                    </div>`).join('');
+            }
+            function koreksiRefresh() {
+                if (koreksiState.mode === 'guru' && typeof presensiState !== 'undefined' && presensiState && presensiState.tab === 'koreksi') {
+                    presensiRender();
+                } else {
+                    const b = document.getElementById('koreksiBox');
+                    if (b) b.innerHTML = koreksiBoxHTML();
+                }
+            }
+            async function koreksiLoad(subject, kelas) {
+                koreksiState.subject = subject;
+                koreksiState.kelas = kelas;
+                koreksiState.loading = true;
+                koreksiRefresh();
+                try {
+                    const { data, error } = await dbClient.rpc('app_koreksi_data', { p_subject: subject, p_kelas: kelas });
+                    if (error) throw error;
+                    koreksiState.data = data || { soal: [] };
+                } catch (err) {
+                    console.error('Gagal memuat data koreksi:', err);
+                    koreksiState.data = null;
+                    if (/SESSION_INVALID/.test(String((err && err.message) || ''))) { handleSessionExpired(); }
+                    else showToast('Gagal memuat jawaban: ' + ((err && err.message) || 'kesalahan database') + ' (pastikan SQL Tahap 8 sudah dijalankan)', 'error');
+                } finally {
+                    koreksiState.loading = false;
+                    koreksiRefresh();
+                }
+            }
+            async function koreksiSet(si, gi, benar) {
+                const k = koreksiState;
+                const s = k.data && k.data.soal[si];
+                const g = s && s.kelompok[gi];
+                if (!g) return;
+                const res = await Swal.fire({
+                    icon: 'question',
+                    title: benar ? 'Benarkan jawaban ini?' : 'Batalkan koreksi?',
+                    html: `<div style="font-size:14px;line-height:1.6">Jawaban: <b>${escHtml(g.jawaban)}</b><br>${g.jumlah} siswa · nilai mereka akan ${benar ? 'dihitung ulang (jawaban ini dianggap benar)' : 'dikembalikan mengikuti kunci jawaban'}.</div>`,
+                    showCancelButton: true,
+                    confirmButtonText: benar ? 'Ya, Benarkan' : 'Ya, Batalkan',
+                    cancelButtonText: 'Tidak'
+                });
+                if (!res.isConfirmed) return;
+                try {
+                    showLoading();
+                    const { data, error } = await dbClient.rpc('app_koreksi_set', {
+                        p_subject: k.subject, p_kelas: k.kelas, p_question_id: s.id, p_norm: g.norm, p_benar: benar
+                    });
+                    if (error) throw error;
+                    k.changed = true;
+                    showToast(`${(data && data.diubah) || 0} jawaban dikoreksi, nilai diperbarui`, 'success');
+                } catch (err) {
+                    console.error('Gagal menyimpan koreksi:', err);
+                    hideLoading();
+                    if (/SESSION_INVALID/.test(String((err && err.message) || ''))) { handleSessionExpired(); return; }
+                    showToast('Gagal menyimpan koreksi: ' + ((err && err.message) || 'kesalahan database'), 'error');
+                    return;
+                }
+                hideLoading();
+                await koreksiLoad(k.subject, k.kelas);
+            }
+            // Admin: dialog di halaman Hasil Ujian
+            async function koreksiOpenAdmin() {
+                const subjects = recalcSubjects();
+                if (subjects.length === 0) { showToast('Belum ada hasil ujian', 'error'); return; }
+                koreksiState = { mode: 'admin', subject: '', kelas: '', data: null, loading: false, changed: false };
+                const sel = 'width:100%;padding:8px 10px;border:1px solid #d1d5db;border-radius:8px;font-size:14px;background:#fff;';
+                const lbl = 'display:block;font-size:12px;font-weight:600;color:#374151;margin:0 0 4px;text-align:left;';
+                const kelasOpts = (sj) => recalcClasses(sj).map(k => `<option value="${escHtml(k)}">Kelas ${escHtml(k)}</option>`).join('');
+                await Swal.fire({
+                    title: 'Koreksi Isian Singkat',
+                    width: 860,
+                    html: `<div style="text-align:left">
+                        <p style="font-size:13px;color:#6b7280;margin-bottom:10px">Daftar di bawah berisi jawaban isian siswa yang <b>berbeda dari kunci</b>. Klik <b>Benarkan</b> bila jawaban itu layak dianggap benar; nilai siswa yang menulisnya langsung dihitung ulang.</p>
+                        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+                            <div style="flex:2;min-width:200px"><label style="${lbl}">Ujian</label><select id="kcSubject" style="${sel}">${subjects.map(sj => `<option value="${escHtml(sj)}">${escHtml(sj)}</option>`).join('')}</select></div>
+                            <div style="flex:1;min-width:130px"><label style="${lbl}">Kelas</label><select id="kcKelas" style="${sel}">${kelasOpts(subjects[0])}</select></div>
+                            <button type="button" onclick="koreksiTampilAdmin()" style="padding:9px 16px;border-radius:8px;background:#0d9488;color:#fff;font-weight:600;border:none;cursor:pointer">Tampilkan</button>
+                        </div>
+                        <div id="koreksiBox" style="max-height:55vh;overflow:auto">${koreksiBoxHTML()}</div>
+                    </div>`,
+                    showConfirmButton: false,
+                    showCloseButton: true,
+                    didOpen: () => {
+                        document.getElementById('kcSubject').addEventListener('change', (e) => {
+                            document.getElementById('kcKelas').innerHTML = kelasOpts(e.target.value);
+                        });
+                    }
+                });
+                if (koreksiState.changed) {
+                    await loadExamData(true);
+                    renderResultsSection();
+                }
+            }
+            function koreksiTampilAdmin() {
+                const subject = document.getElementById('kcSubject').value;
+                const kelas = document.getElementById('kcKelas').value;
+                if (subject && kelas) koreksiLoad(subject, kelas);
+            }
+            // Guru: tab "Koreksi" (kelas + mapel yang ditugaskan)
+            function presensiHTMLKoreksi() {
+                const st = presensiState, kz = st.koreksi;
+                const { primaryColor } = RC;
+                if (!st.tugas.length) return `<div class="bg-white rounded-2xl shadow-custom p-6 text-center text-gray-500">Koreksi tersedia untuk kelas dan mapel yang Anda ajar. Anda belum ditugaskan mengajar mapel di kelas mana pun. Hubungi admin.</div>`;
+                const opts = st.tugas.map(t => { const k = presensiKey(t.kelas, t.mapel); return `<option value="${escHtml(k)}" ${k === kz.key ? 'selected' : ''}>${escHtml(presensiSumberLabel(t.kelas, t.mapel))}</option>`; }).join('');
+                const ujianOpts = kz.ujian.length
+                    ? kz.ujian.map(u => `<option value="${escHtml(u)}" ${u === kz.subject ? 'selected' : ''}>${escHtml(u)}</option>`).join('')
+                    : '<option value="">(belum ada hasil ujian)</option>';
+                return `<div class="bg-white rounded-2xl shadow-custom p-4 md:p-5 space-y-4">
+                    <p class="text-xs text-gray-500">Daftar berisi jawaban isian siswa yang <b>berbeda dari kunci</b>. Klik <b>Benarkan</b> bila jawaban itu layak dianggap benar; nilai siswa yang menulisnya langsung dihitung ulang.</p>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 items-end">
+                        <label class="block col-span-2 md:col-span-1"><span class="${PRESENSI_LBL}">Kelas & Mapel</span>
+                            <select onchange="koreksiGuruPilihKelas(this.value)" class="${PRESENSI_SEL}">${opts}</select></label>
+                        <label class="block col-span-2 md:col-span-1"><span class="${PRESENSI_LBL}">Ujian</span>
+                            <select onchange="presensiState.koreksi.subject = this.value" class="${PRESENSI_SEL}">${ujianOpts}</select></label>
+                        <button onclick="koreksiGuruTampil()" class="px-4 py-2 rounded-xl text-sm font-semibold text-white shadow" style="background-color: ${primaryColor};">Tampilkan</button>
+                    </div>
+                    <div id="koreksiBox">${koreksiBoxHTML()}</div>
+                </div>`;
+            }
+            async function koreksiGuruPilihKelas(key) {
+                const kz = presensiState.koreksi;
+                kz.key = key; kz.ujian = []; kz.subject = '';
+                koreksiState = { mode: 'guru', subject: '', kelas: '', data: null, loading: false, changed: false };
+                if (!key) { presensiRender(); return; }
+                const { kelas, mapel } = presensiKeyParts(key);
+                try {
+                    const rows = await fetchAllRows('examresult', 'exam_subject', 'timestamp', (q) => q.eq('student_class', kelas));
+                    kz.ujian = [...new Set(rows.map(r => String(r.exam_subject || '').trim()).filter(sj => sj && parseSubjectKey(sj).mapel === mapel))].sort((a, b) => a.localeCompare(b, 'id'));
+                    kz.subject = kz.ujian[0] || '';
+                } catch (err) {
+                    console.error('Gagal memuat daftar ujian:', err);
+                    presensiErr(err, 'Gagal memuat daftar ujian');
+                }
+                presensiRender();
+            }
+            function koreksiGuruTampil() {
+                const kz = presensiState.koreksi;
+                if (!kz.key || !kz.subject) { showToast('Pilih kelas, mapel, dan ujian terlebih dahulu', 'error'); return; }
+                koreksiState.mode = 'guru';
+                koreksiLoad(kz.subject, presensiKeyParts(kz.key).kelas);
+            }
             function showQuestionAnalysis() {
                 const subj = String(filterState.subject || '').trim();
                 if (!subj) { showToast('Pilih Mapel dulu pada filter untuk analisis soal', 'error'); return; }
@@ -7654,7 +7855,7 @@ grant execute on function public.hash_new_passwords() to anon, authenticated;</p
                         const q = qMap.get(String(qid));
                         if (!q) return;
                         const st = stats[qid] || (stats[qid] = { q, benar: 0, salah: 0, kosong: 0, sebagian: 0, wrong: {} });
-                        const status = evaluateAnswer(q, answers[idx]);
+                        const status = evaluateAnswer(q, answers[idx], manualCorrect(r, q.id));
                         st[status]++;
                         if (status === 'salah') {
                             const t = answerToText(answers[idx]) || '(kosong)';
