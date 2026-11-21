@@ -222,12 +222,6 @@
                 z-index: 99999 !important;
             }
             
-            /* Mencegah body bergeser saat popup muncul */
-            body.swal2-shown > [aria-hidden="true"] {
-                transition: 0.1s filter;
-                filter: blur(3px); 
-            }
-
             /* Reset Margin */
             body {
                 margin: 0;
@@ -2182,7 +2176,7 @@
                 if (!activeSubjectsNames || activeSubjectsNames.length === 0) {
                     const noExamModal = document.createElement('div');
                     // Penyesuaian agar tidak menempel di atas
-                    noExamModal.className = "fixed inset-0 z-50 flex p-6 bg-slate-900/70 backdrop-blur-sm overflow-y-auto";
+                    noExamModal.className = "fixed inset-0 z-50 flex p-6 bg-slate-900/70 overflow-y-auto";
                     noExamModal.innerHTML = `
                         <div class="m-auto bg-white rounded-2xl p-6 shadow-2xl w-full max-w-sm text-center border border-gray-100 animate-fade-in">
                             <div class="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -2208,7 +2202,7 @@
                 const modalOverlay = document.createElement('div');
                 modalOverlay.id = "popupJadwalUjian";
                 // KUNCI FLOATING: p-6 memastikan jarak aman dari pinggir layar atas/bawah/kiri/kanan
-                modalOverlay.className = "fixed inset-0 z-50 flex p-6 bg-slate-900/70 backdrop-blur-md transition-opacity duration-300 overflow-y-auto";
+                modalOverlay.className = "fixed inset-0 z-50 flex p-6 bg-slate-900/70 transition-opacity duration-300 overflow-y-auto";
                 
                 const infoAttempt = (examSettings && examSettings.limit_one_attempt) 
                     ? "Kesempatan ujian HANYA 1 KALI. Pastikan sinyal stabil." 
@@ -2680,7 +2674,7 @@
                             <span class="opacity-80 font-medium">SMPN 11 TANGERANG</span>
                         </div>
 
-                        <div id="navModal" class="hidden fixed inset-0 z-[65] bg-black/60 flex items-center justify-center backdrop-blur-sm p-3" onclick="if(event.target===this) toggleNavModal()">
+                        <div id="navModal" class="hidden fixed inset-0 z-[65] bg-black/60 flex items-center justify-center p-3" onclick="if(event.target===this) toggleNavModal()">
                             <div class="bg-white w-full max-w-lg max-h-[80vh] rounded-xl shadow-2xl flex flex-col overflow-hidden">
                                 <div class="flex justify-between items-center px-4 py-3 border-b border-gray-200">
                                     <h3 class="font-bold text-gray-700 text-sm md:text-base">Daftar Soal</h3>
@@ -2696,7 +2690,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div id="coretanModal" class="hidden fixed inset-0 z-[70] bg-black/70 flex items-center justify-center backdrop-blur-sm p-2 md:p-4 transition-opacity">
+                        <div id="coretanModal" class="hidden fixed inset-0 z-[70] bg-black/70 flex items-center justify-center p-2 md:p-4 transition-opacity">
                             <div class="bg-white w-full max-w-4xl h-[90vh] md:h-[85vh] rounded-xl shadow-2xl flex flex-col overflow-hidden border-4 border-gray-300 relative">
                                 
                                 <div class="bg-gray-100 p-2 md:p-3 border-b border-gray-300 flex justify-between items-center gap-2 flex-wrap">
@@ -2758,7 +2752,10 @@
                 canvas.addEventListener('touchend', endPosition);
                 canvas.addEventListener('touchmove', draw, { passive: false });
                 
-                window.addEventListener('resize', resizeCanvas);
+                if (!window._canvasResizeBound) {
+                    window.addEventListener('resize', resizeCanvas);
+                    window._canvasResizeBound = true;
+                }
             }
 
             // Buka/Tutup Layar Buram
@@ -2841,12 +2838,11 @@
                         showCancelButton: true,
                         confirmButtonColor: '#ef4444',
                         cancelButtonColor: '#4b5563',
-                        confirmButtonText: '🗑️ Ya, Bersihkan',
+                        confirmButtonText: 'Ya, Bersihkan',
                         cancelButtonText: 'Batal',
                         allowOutsideClick: false
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            // Proteksi aman: Cek apakah elemen canvas sudah ada di layar
                             if (typeof ctx !== 'undefined' && typeof canvas !== 'undefined' && canvas) {
                                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                             }
@@ -3978,6 +3974,7 @@
 
                 // Matikan interval timer
                 if (typeof examTimer !== 'undefined' && examTimer) clearInterval(examTimer);
+                if (window._focusPoll) { clearInterval(window._focusPoll); window._focusPoll = null; }
                 
                 // Lepaskan Wake Lock (Layar agar bisa mati otomatis lagi)
                 if (typeof wakeLock !== 'undefined' && wakeLock !== null) {
@@ -4281,6 +4278,7 @@
                 }
             
                 if (examTimer) clearInterval(examTimer);
+                if (window._focusPoll) { clearInterval(window._focusPoll); window._focusPoll = null; }
                 if (pelaporanInterval) {
                     clearInterval(pelaporanInterval);
                     pelaporanInterval = null;
